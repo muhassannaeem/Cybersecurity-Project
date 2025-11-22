@@ -1,0 +1,301 @@
+/* pages/Dashboard.module.css */
+
+.wrapper {
+  min-height: 100vh;
+}
+
+.maxWidthWrapper {
+  max-width: 1280px; /* Corresponds to max-w-7xl */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Header */
+.header {
+  background-color: var(--card-background);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.headerIcon {
+  color: var(--color-primary);
+  height: 2rem;
+  width: 2rem;
+  transition: color 0.3s ease;
+}
+
+.headerTitle h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Buttons */
+.btn {
+  font-weight: 500;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.5rem;
+  transition: 
+    all 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  cursor: pointer;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+              0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.btnPrimary {
+  composes: btn;
+  background-color: var(--color-primary);
+  color: white;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.btnPrimary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.btnSecondary {
+  composes: btn;
+  background-color: var(--card-background);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+.btnSecondary:hover {
+  background-color: #f9fafb; /* gray-50 */
+}
+
+/* Navigation */
+.nav {
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.navTabs {
+  display: flex;
+  gap: 1rem;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 1rem 0.25rem;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: none;
+  border-radius: 0;
+  border-right: none;
+  border-left: none;
+  border-top: none;
+  cursor: pointer;
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tab svg {
+  height: 1.25rem;
+  width: 1.25rem;
+  margin-right: 0.5rem;
+  transition: fill 0.3s ease;
+}
+
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Main Content & Cards */
+.main {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+  transition: padding 0.3s ease;
+}
+
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background-color: var(--card-background);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.03);
+  border: 1px solid var(--border-color);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.placeholderCard {
+  composes: card;
+}
+
+.placeholderCard h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  transition: color 0.3s ease;
+}
+
+/* Stats Grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .statsGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .statsGrid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.statCard {
+  composes: card;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.statIconWrapper {
+  flex-shrink: 0;
+  height: 2rem;
+  width: 2rem;
+  transition: color 0.3s ease;
+}
+
+.statText dt {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.statText dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+/* Threats Table */
+.tableCard {
+  composes: card;
+  padding: 0;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.tableHeader {
+  padding: 1.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.tableContainer {
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: #f9fafb; /* gray-50 */
+  transition: background-color 0.3s ease;
+}
+
+.table th {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 0.3s ease;
+}
+
+.table td {
+  padding: 1rem 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  border-top: 1px solid var(--border-color);
+  white-space: nowrap;
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.table tbody tr:first-child td {
+  border-top: 1px solid var(--border-color);
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: #f9fafb; /* gray-50 */
+  transition: background-color 0.3s ease;
+}
+
+.severityPill {
+  display: inline-flex;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  text-transform: capitalize;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.severityCritical {
+  color: var(--color-danger-text);
+  background-color: var(--color-danger-bg);
+}
+.severityHigh {
+  color: var(--color-warning-text);
+  background-color: var(--color-warning-bg);
+}
+.severityMedium {
+  color: #a16207; /* yellow-700 */
+  background-color: #fefce8; /* yellow-100 */
+}
+.severityLow {
+  color: var(--color-success-text);
+  background-color: var(--color-success-bg);
+}
