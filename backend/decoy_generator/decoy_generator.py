@@ -60,6 +60,23 @@ class DecoyGenerator:
                 'ports': [8080],
                 'volumes': ['/app/decoys/iot_data:/data'],
                 'environment': {}
+            },
+            # Dionaea malware honeypot (placeholder image/config)
+            'dionaea': {
+                'image': 'dionaea/dionaea:latest',
+                'ports': [21, 42, 135, 443, 445, 1433],
+                'volumes': [
+                    '/app/decoys/dionaea_logs:/var/log/dionaea',
+                    '/app/decoys/dionaea_samples:/opt/dionaea/var/dionaea/binaries',
+                ],
+                'environment': {}
+            },
+            # Conpot industrial/ICS honeypot (placeholder image/config)
+            'conpot': {
+                'image': 'honeynet/conpot:latest',
+                'ports': [80, 102, 161, 502],
+                'volumes': ['/app/decoys/conpot_logs:/var/log/conpot'],
+                'environment': {}
             }
         }
         
@@ -109,7 +126,11 @@ class DecoyGenerator:
                 volumes=config['volumes'],
                 environment=config['environment'],
                 detach=True,
-                restart_policy={"Name": "unless-stopped"}
+                restart_policy={"Name": "unless-stopped"},
+                labels={
+                    "honeypot": "true",
+                    "decoy_type": decoy_type,
+                },
             )
             
             # Get container info
@@ -236,10 +257,13 @@ class DecoyGenerator:
             )
             
             for container in containers:
+                labels = getattr(container, 'labels', None) or container.attrs.get('Config', {}).get('Labels', {})
+                decoy_type = labels.get('decoy_type', 'honeypot') if isinstance(labels, dict) else 'honeypot'
+
                 decoy_info = {
                     'id': container.id,
                     'name': container.name,
-                    'type': 'honeypot',
+                    'type': decoy_type,
                     'status': container.status,
                     'image': container.image.tags[0] if container.image.tags else container.image.id,
                     'created_at': container.attrs['Created']
