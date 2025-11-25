@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Lock, Mail, User, Shield } from 'lucide-react';
 import { signup, isAuthenticated } from '../utils/auth';
+import toast from 'react-hot-toast';
 import styles from './Dashboard.module.css';
 
 export default function Signup() {
@@ -20,7 +21,7 @@ export default function Signup() {
     }
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Simple validation
@@ -34,17 +35,19 @@ export default function Signup() {
       return;
     }
     
-    // Use the auth utility for signup
-    if (signup(name, email, password)) {
+    try {
+      await signup(name, email, password);
       setSuccess(true);
       setError('');
       
-      // Redirect to login after 2 seconds
+      // Redirect to dashboard after 2 seconds (user is already logged in)
       setTimeout(() => {
-        router.push('/login');
+        router.push('/dashboard');
       }, 2000);
-    } else {
+    } catch (err) {
+      console.error(err);
       setError('Failed to create account');
+      toast.error('Signup failed');
     }
   };
 

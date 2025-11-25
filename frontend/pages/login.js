@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Lock, Mail, Shield } from 'lucide-react';
 import { login, isAuthenticated } from '../utils/auth';
+import toast from 'react-hot-toast';
 import styles from './Dashboard.module.css';
 
 export default function Login() {
@@ -17,15 +18,16 @@ export default function Login() {
     }
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Use the auth utility for login
-    if (login(email, password)) {
-      // Redirect to dashboard
+    try {
+      await login(email, password);
       router.push('/dashboard');
-    } else {
+    } catch (err) {
+      console.error(err);
       setError('Invalid email or password');
+      toast.error('Login failed');
     }
   };
 

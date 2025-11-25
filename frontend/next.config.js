@@ -9,7 +9,8 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://host.docker.internal:5000/api/:path*',
+        // For local development (no Docker), point to localhost backend
+        destination: 'http://localhost:5000/api/:path*',
       },
     ];
   },

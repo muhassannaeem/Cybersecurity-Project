@@ -2,6 +2,8 @@ import type { AppProps } from 'next/app';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import '../styles/globals.css';
+import { useEffect } from 'react';
+import { initAuthFromStorage } from '../utils/auth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,6 +17,10 @@ const queryClient = new QueryClient({
 });
 
 export default function App({ Component, pageProps }: AppProps) {
+  useEffect(() => {
+    initAuthFromStorage();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Component {...pageProps} />
