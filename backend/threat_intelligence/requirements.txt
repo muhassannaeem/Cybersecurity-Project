@@ -1,6 +1,6 @@
 flask==2.2.5
 stix2==3.0.1
-# taxii2client - temporarily removed due to package issues
+taxii2-client>=2.3.0
 requests==2.31.0
 redis==4.6.0
 celery==5.3.1

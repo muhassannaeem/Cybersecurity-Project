@@ -62,12 +62,12 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 
 ## 5. MITRE ATT&CK Attribution with SIEM Integration
 
-17. Ensure that detection events from traffic monitoring, behavioral analysis, and honeypots are consistently enriched with MITRE ATT&CK technique IDs via the threat attribution module.
-18. Define a common event format that includes: timestamp, source, destination, technique ID(s), confidence score, and related indicators.
-19. Implement outbound integrations to external SIEM platforms (e.g., Elastic SIEM, Splunk) so MITRE‑enriched events and indicators are exported in near real‑time.
-20. Reuse or extend the STIX/TAXII and threat‑intelligence components so that:
-    - ATT&CK mappings are included in shared indicators.
-    - SIEM exports are aligned with standard schemas (e.g., ECS for Elastic, Splunk HEC format).
+17. Ensure that detection events from traffic monitoring, behavioral analysis, and honeypots are consistently enriched with MITRE ATT&CK technique IDs via the threat attribution module. **(DONE)**
+18. Define a common event format that includes: timestamp, source, destination, technique ID(s), confidence score, and related indicators. **(DONE)**
+19. Implement outbound integrations to external SIEM platforms (e.g., Elastic SIEM, Splunk) so MITRE‑enriched events and indicators are exported in near real‑time. **(DONE)**
+20. Reuse or extend the STIX/TAXII and threat‑intelligence components so that: **(DONE)**
+    - ATT&CK mappings are included in shared indicators. **(DONE)**
+    - SIEM exports are aligned with standard schemas (e.g., ECS for Elastic, Splunk HEC format). **(DONE)**
 
 ---
 
@@ -101,12 +101,12 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 
 ## 8. Threat Intelligence Sharing (STIX2 / TAXII) Enhancements
 
-31. Re‑enable and harden TAXII client/server functionality (currently commented/disabled) so STIX objects can be exchanged over standard TAXII 2.x.
-32. Add configuration and health‑checking for external TAXII/STIX providers (e.g., OpenCTI, MISP, AlienVault, and any SIEMs that support STIX/TAXII).
-33. Improve the background sharing loop to handle failures, retries, and idempotency when pushing indicators to remote systems.
-34. Provide management APIs (and optionally a UI view) for:
-    - Viewing which external feeds are enabled.
-    - Adjusting sharing policies (auto‑share on/off, thresholds, batch sizes).
+31. Re‑enable and harden TAXII client/server functionality (currently commented/disabled) so STIX objects can be exchanged over standard TAXII 2.x. **(DONE)**
+32. Add configuration and health‑checking for external TAXII/STIX providers (e.g., OpenCTI, MISP, AlienVault, and any SIEMs that support STIX/TAXII). **(DONE)**
+33. Improve the background sharing loop to handle failures, retries, and idempotency when pushing indicators to remote systems. **(DONE)**
+34. Provide management APIs (and optionally a UI view) for: **(DONE)**
+    - Viewing which external feeds are enabled. **(DONE)**
+    - Adjusting sharing policies (auto‑share on/off, thresholds, batch sizes). **(DONE)**
 
 ---
 
