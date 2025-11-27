@@ -12,9 +12,14 @@ from collections import Counter, defaultdict
 import jwt
 import requests
 import sys
+import logging
 
 # Add backend directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Import event enrichment and SIEM integration (Tasks 17-20)
 try:
