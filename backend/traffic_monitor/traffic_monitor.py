@@ -16,9 +16,20 @@ import numpy as np
 from scapy.all import sniff, IP, TCP, UDP
 import pyshark
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configure structured logging
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from logging_config import setup_logging, log_info, log_error, log_warning
+    logger = setup_logging(
+        service_name="traffic_monitor",
+        log_level=os.getenv('LOG_LEVEL', 'INFO'),
+        environment=os.getenv('ENVIRONMENT', 'development'),
+        log_file=os.getenv('LOG_FILE', '/app/logs/traffic_monitor.log')
+    )
+except ImportError:
+    # Fallback to basic logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
 class TrafficMonitor:
     """Traffic Monitor using tcpdump and pyshark for real-time network capture"""

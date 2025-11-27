@@ -1,0 +1,18 @@
+cluster.name: "cybersecurity-cluster"
+network.host: 0.0.0.0
+discovery.type: single-node
+
+# Memory settings
+bootstrap.memory_lock: false
+
+# Index settings
+action.auto_create_index: true
+
+# Security (disabled for development)
+xpack.security.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# Performance settings for single node
+thread_pool.write.size: 4
+thread_pool.write.queue_size: 200
+

@@ -1,0 +1,196 @@
+{
+  "alerts": [
+    {
+      "name": "High Error Rate",
+      "description": "Alert when error rate exceeds 5% in 5 minutes",
+      "index": "cybersecurity-*",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "level": "ERROR"
+              }
+            }
+          ]
+        }
+      },
+      "timeWindow": "5m",
+      "threshold": {
+        "value": 5,
+        "operator": ">"
+      },
+      "actions": [
+        {
+          "type": "email",
+          "to": ["admin@example.com"],
+          "subject": "High Error Rate Alert",
+          "body": "Error rate has exceeded 5% in the last 5 minutes."
+        }
+      ]
+    },
+    {
+      "name": "Service Down",
+      "description": "Alert when a service stops logging for 2 minutes",
+      "index": "cybersecurity-system-*",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "exists": {
+                "field": "service"
+              }
+            }
+          ]
+        }
+      },
+      "timeWindow": "2m",
+      "threshold": {
+        "value": 0,
+        "operator": "="
+      },
+      "actions": [
+        {
+          "type": "webhook",
+          "url": "http://backend:5000/api/alerts/service-down",
+          "method": "POST"
+        }
+      ]
+    },
+    {
+      "name": "High Threat Detection Rate",
+      "description": "Alert when threat detection rate exceeds 10 per minute",
+      "index": "cybersecurity-threats-*",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "event_type": "threat"
+              }
+            },
+            {
+              "match": {
+                "level": "WARNING"
+              }
+            }
+          ]
+        }
+      },
+      "timeWindow": "1m",
+      "threshold": {
+        "value": 10,
+        "operator": ">"
+      },
+      "actions": [
+        {
+          "type": "email",
+          "to": ["security-team@example.com"],
+          "subject": "High Threat Detection Rate",
+          "body": "Threat detection rate has exceeded 10 threats per minute."
+        }
+      ]
+    },
+    {
+      "name": "Critical Severity Threat",
+      "description": "Immediate alert for critical severity threats",
+      "index": "cybersecurity-threats-*",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "event_type": "threat"
+              }
+            },
+            {
+              "match": {
+                "metadata.severity": "critical"
+              }
+            }
+          ]
+        }
+      },
+      "timeWindow": "1m",
+      "threshold": {
+        "value": 0,
+        "operator": ">"
+      },
+      "actions": [
+        {
+          "type": "email",
+          "to": ["security-team@example.com", "admin@example.com"],
+          "subject": "CRITICAL: Threat Detected",
+          "body": "A critical severity threat has been detected. Immediate action required."
+        }
+      ]
+    },
+    {
+      "name": "Threat Intelligence Sharing Failure",
+      "description": "Alert on threat intelligence sharing errors",
+      "index": "cybersecurity-system-*",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "service": "threat_intelligence"
+              }
+            },
+            {
+              "match": {
+                "level": "ERROR"
+              }
+            }
+          ]
+        }
+      },
+      "timeWindow": "5m",
+      "threshold": {
+        "value": 0,
+        "operator": ">"
+      },
+      "actions": [
+        {
+          "type": "webhook",
+          "url": "http://backend:5000/api/alerts/intelligence-failure",
+          "method": "POST"
+        }
+      ]
+    },
+    {
+      "name": "Attribution Pipeline Failure",
+      "description": "Alert on threat attribution pipeline errors",
+      "index": "cybersecurity-system-*",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "service": "threat_attribution"
+              }
+            },
+            {
+              "match": {
+                "level": "ERROR"
+              }
+            }
+          ]
+        }
+      },
+      "timeWindow": "5m",
+      "threshold": {
+        "value": 0,
+        "operator": ">"
+      },
+      "actions": [
+        {
+          "type": "webhook",
+          "url": "http://backend:5000/api/alerts/attribution-failure",
+          "method": "POST"
+        }
+      ]
+    }
+  ]
+}
+

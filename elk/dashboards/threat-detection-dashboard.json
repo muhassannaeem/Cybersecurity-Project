@@ -1,0 +1,28 @@
+{
+  "version": "8.11.0",
+  "objects": [
+    {
+      "id": "threat-detection-dashboard",
+      "type": "dashboard",
+      "updated_at": "2024-01-01T00:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "title": "Threat Detection Dashboard",
+        "description": "Visualize threat detections, attack types, and MITRE ATT&CK techniques",
+        "panelsJSON": "[{\"version\":\"8.11.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"1\"},\"panelIndex\":\"1\",\"embeddableConfig\":{},\"panelRefName\":\"panel_1\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":24,\"y\":0,\"w\":24,\"h\":15,\"i\":\"2\"},\"panelIndex\":\"2\",\"embeddableConfig\":{},\"panelRefName\":\"panel_2\"}]",
+        "optionsJSON": "{\"useMargins\":true,\"syncColors\":false,\"hidePanelTitles\":false}",
+        "version": 1,
+        "timeRestore": false,
+        "kibana": {
+          "spaces": [],
+          "savedObject": {
+            "type": "dashboard",
+            "id": "threat-detection-dashboard"
+          }
+        }
+      },
+      "references": []
+    }
+  ]
+}
+

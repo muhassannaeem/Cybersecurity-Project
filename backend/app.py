@@ -17,9 +17,19 @@ import logging
 # Add backend directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Set up structured logging
+try:
+    from logging_config import setup_logging, log_info, log_error, log_warning, log_audit, log_threat
+    logger = setup_logging(
+        service_name="backend",
+        log_level=os.getenv('LOG_LEVEL', 'INFO'),
+        environment=os.getenv('ENVIRONMENT', 'development'),
+        log_file=os.getenv('LOG_FILE', '/app/logs/backend.log')
+    )
+except ImportError:
+    # Fallback to basic logging if module not available
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
 # Import event enrichment and SIEM integration (Tasks 17-20)
 try:
@@ -97,6 +107,56 @@ def socket_auth_connect(auth):
     return None
 
 db = SQLAlchemy(app)
+
+# Request logging middleware
+@app.before_request
+def log_request():
+    """Log incoming requests with correlation ID."""
+    import uuid
+    g.correlation_id = str(uuid.uuid4())
+    g.request_start_time = datetime.utcnow()
+    
+    # Skip logging for health checks
+    if request.path != '/api/health':
+        try:
+            log_info(
+                logger,
+                f"{request.method} {request.path}",
+                event_type="system",
+                correlation_id=g.correlation_id,
+                ip_address=request.remote_addr,
+                metadata={
+                    "method": request.method,
+                    "path": request.path,
+                    "query_params": dict(request.args),
+                    "user_agent": request.headers.get('User-Agent', '')
+                }
+            )
+        except Exception:
+            pass  # Don't break requests if logging fails
+
+@app.after_request
+def log_response(response):
+    """Log response after request completes."""
+    if request.path != '/api/health':
+        try:
+            duration_ms = int((datetime.utcnow() - g.request_start_time).total_seconds() * 1000)
+            log_info(
+                logger,
+                f"{request.method} {request.path} - {response.status_code}",
+                event_type="system",
+                correlation_id=getattr(g, 'correlation_id', None),
+                ip_address=request.remote_addr,
+                metadata={
+                    "status_code": response.status_code,
+                    "duration_ms": duration_ms,
+                    "method": request.method,
+                    "path": request.path
+                }
+            )
+        except Exception:
+            pass
+    return response
 
 # Token serializer for auth (uses Flask SECRET_KEY)
 token_serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -505,6 +565,19 @@ def signup():
             user_id=user.id,
             ip_address=request.remote_addr,
         )
+        
+        # Structured logging
+        try:
+            log_audit(
+                logger,
+                f"User signup: {user.email}",
+                user_id=user.id,
+                ip_address=request.remote_addr,
+                correlation_id=getattr(g, 'correlation_id', None),
+                metadata={"email": user.email, "role": user.role}
+            )
+        except Exception:
+            pass
 
         return jsonify({
             "token": token,
@@ -540,6 +613,19 @@ def login():
         user_id=user.id,
         ip_address=request.remote_addr,
     )
+    
+    # Structured logging
+    try:
+        log_audit(
+            logger,
+            f"User login: {user.email}",
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            correlation_id=getattr(g, 'correlation_id', None),
+            metadata={"email": user.email, "role": user.role}
+        )
+    except Exception:
+        pass
 
     return jsonify({
         "token": token,
@@ -644,6 +730,25 @@ def deploy_decoy():
 
         db.session.add(decoy)
         db.session.commit()
+
+        # Structured logging for decoy deployment
+        try:
+            log_audit(
+                logger,
+                f"Decoy deployed: {decoy.name} (type: {decoy.type})",
+                user_id=g.current_user_id,
+                ip_address=request.remote_addr,
+                correlation_id=getattr(g, 'correlation_id', None),
+                metadata={
+                    "decoy_id": decoy.id,
+                    "decoy_type": decoy.type,
+                    "decoy_name": decoy.name,
+                    "port": decoy.port,
+                    "ip_address": decoy.ip_address
+                }
+            )
+        except Exception:
+            pass
 
         payload = {
             'id': decoy.id,
@@ -1210,10 +1315,35 @@ def auth_help():
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
+    try:
+        log_warning(
+            logger,
+            f"404 Not Found: {request.path}",
+            correlation_id=getattr(g, 'correlation_id', None),
+            ip_address=request.remote_addr,
+            metadata={"method": request.method, "path": request.path}
+        )
+    except Exception:
+        pass
     return jsonify({'error': 'Not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    db.session.rollback()
+    try:
+        log_error(
+            logger,
+            f"500 Internal Server Error: {str(error)}",
+            correlation_id=getattr(g, 'correlation_id', None),
+            ip_address=request.remote_addr,
+            metadata={
+                "method": request.method,
+                "path": request.path,
+                "error": str(error)
+            }
+        )
+    except Exception:
+        pass
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':

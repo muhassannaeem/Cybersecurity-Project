@@ -187,6 +187,25 @@ This file tracks the TODO items from `todo.md` that have been implemented in the
 
 ---
 
+## 9. Centralized Monitoring & Logging – Items 35–38
+
+**Tasks:**
+- 35: Design a centralized logging architecture using the ELK stack (Elasticsearch, Logstash, Kibana) or equivalent.
+- 36: Configure each microservice container to ship structured logs to the central logging system.
+- 37: Define log formats that capture system events and attacker behavior for post-incident analysis.
+- 38: Build Kibana (or equivalent) dashboards and alerts for service health, detections, and pipeline errors.
+
+**Status:** Implemented (ELK stack integration + dashboards).
+
+**How:**
+- Added Elasticsearch, Logstash, Kibana, and Filebeat services to `docker-compose.yml`, plus dedicated configs under `elk/`.
+- Created `backend/logging_config.py` and updated all microservices (backend, decoy_generator, traffic_monitor, behavioral_analysis) to emit JSON logs with correlation IDs, event types, and metadata.
+- Configured Filebeat to ship container logs to Logstash, where a pipeline enriches/ routes them into `cybersecurity-*` Elasticsearch indices.
+- Authored Kibana dashboards (`service-health`, `threat-detection`, `attack-behavior`, `error-pipeline`) and documented alert rules for high error rate, service downtime, threat surges, and pipeline failures.
+- Added quick-start + setup scripts (`ELK_QUICK_START.md`, `elk/scripts/*.sh`) so developers can bring up the monitoring stack, create index patterns, import dashboards, and validate alerts locally.
+
+---
+
 ## Notes
 
 - The implementation is currently based on **mock but stateful** data generators. Values evolve gradually per backend run so that the UI looks realistic even though there is no live traffic yet.
