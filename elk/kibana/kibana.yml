@@ -4,7 +4,7 @@ elasticsearch.hosts: [ "http://elasticsearch:9200" ]
 monitoring.ui.container.elasticsearch.enabled: true
 
 # Index patterns
-kibana.defaultAppId: "discover"
+
 
 # Security (disabled for development)
 xpack.security.enabled: false
