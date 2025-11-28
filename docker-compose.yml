@@ -156,6 +156,51 @@ services:
     volumes:
       - redis_data:/data
 
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+
+  # Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: logstash
+    environment:
+      - "LS_JAVA_OPTS=-Xmx512m -Xms512m"
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    volumes:
+      - ./logstash/config:/usr/share/logstash/config:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - logstash_data:/usr/share/logstash/data
+    depends_on:
+      - elasticsearch
+
   # Legacy Evaluation Tools (deprecated - use evaluation_engine instead)
   evaluation:
     build: ./evaluation
@@ -169,3 +214,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  elasticsearch_data:
+  kibana_data:
+  logstash_data:
