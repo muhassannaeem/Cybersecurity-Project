@@ -17,9 +17,21 @@ from typing import Dict, List, Tuple, Optional
 import redis
 import requests
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configure structured logging
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from logging_config import setup_logging, log_info, log_error, log_warning
+    logger = setup_logging(
+        service_name="behavioral_analysis",
+        log_level=os.getenv('LOG_LEVEL', 'INFO'),
+        environment=os.getenv('ENVIRONMENT', 'development'),
+        log_file=os.getenv('LOG_FILE', '/app/logs/behavioral_analysis.log')
+    )
+except ImportError:
+    # Fallback to basic logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
 class BehavioralAnalysisEngine:
     """Behavioral Analysis Engine with LSTM, Isolation Forest, and Autoencoder models"""

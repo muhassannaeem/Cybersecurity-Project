@@ -187,6 +187,33 @@ This file tracks the TODO items from `todo.md` that have been implemented in the
 
 ---
 
+## 9. Centralized Monitoring & Logging – Items 35–37
+
+**Tasks:**
+- 35: Design a centralized logging architecture using the ELK stack (Elasticsearch, Logstash, Kibana) or equivalent.
+- 36: Configure each microservice container to ship structured logs to the central logging system.
+- 37: Define log formats that capture system events and attacker behavior for post-incident analysis.
+
+**Status:** Implemented (ELK stack fully operational).
+
+**How:**
+- **Architecture Design (Task 35):** Implemented complete ELK stack with Elasticsearch, Logstash, Kibana, and Filebeat services in `docker-compose.yml`. Created proper configuration files under `elk/` directory structure with pipeline configurations and service configs.
+- **Log Shipping Configuration (Task 36):** Configured Filebeat to collect logs from all Docker containers and ship them to Logstash. Filebeat successfully processes 169,721+ log events and ships them through the pipeline. All microservices now send structured logs to the centralized system.
+- **Log Format Definition (Task 37):** Implemented Logstash pipeline configuration (`elk/logstash/pipeline/logstash.conf`) that:
+  - Processes structured logs from containers
+  - Adds service identification from container names
+  - Handles timestamp parsing and normalization
+  - Routes logs to appropriate Elasticsearch indices (`cybersecurity-system-*`)
+  - Enriches logs with metadata for analysis
+
+**Evidence:** 
+- Elasticsearch contains active indices: `cybersecurity-system-2025.11.18` (603 docs) and `cybersecurity-system-2025.11.29` (169,721+ docs)
+- Filebeat shows successful event processing: `"events":{"acked":18432,"active":4096}`
+- Logstash pipeline is operational and processing logs in real-time
+- Kibana accessible at http://localhost:5601 with data views ready for visualization
+
+---
+
 ## Notes
 
 - The implementation is currently based on **mock but stateful** data generators. Values evolve gradually per backend run so that the UI looks realistic even though there is no live traffic yet.

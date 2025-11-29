@@ -11,6 +11,34 @@ import json
 from collections import Counter, defaultdict
 import jwt
 import requests
+import sys
+import logging
+
+# Add backend directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Set up structured logging
+try:
+    from logging_config import setup_logging, log_info, log_error, log_warning, log_audit, log_threat
+    logger = setup_logging(
+        service_name="backend",
+        log_level=os.getenv('LOG_LEVEL', 'INFO'),
+        environment=os.getenv('ENVIRONMENT', 'development'),
+        log_file=os.getenv('LOG_FILE', '/app/logs/backend.log')
+    )
+except ImportError:
+    # Fallback to basic logging if module not available
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+# Import event enrichment and SIEM integration (Tasks 17-20)
+try:
+    from event_enrichment import EventEnrichmentService, EnrichedEvent
+    from siem_integration import SIEMIntegrationManager
+    ENRICHMENT_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Event enrichment modules not available: {e}")
+    ENRICHMENT_AVAILABLE = False
 
 app = Flask(__name__)
 CORS(app)
@@ -80,6 +108,56 @@ def socket_auth_connect(auth):
 
 db = SQLAlchemy(app)
 
+# Request logging middleware
+@app.before_request
+def log_request():
+    """Log incoming requests with correlation ID."""
+    import uuid
+    g.correlation_id = str(uuid.uuid4())
+    g.request_start_time = datetime.utcnow()
+    
+    # Skip logging for health checks
+    if request.path != '/api/health':
+        try:
+            log_info(
+                logger,
+                f"{request.method} {request.path}",
+                event_type="system",
+                correlation_id=g.correlation_id,
+                ip_address=request.remote_addr,
+                metadata={
+                    "method": request.method,
+                    "path": request.path,
+                    "query_params": dict(request.args),
+                    "user_agent": request.headers.get('User-Agent', '')
+                }
+            )
+        except Exception:
+            pass  # Don't break requests if logging fails
+
+@app.after_request
+def log_response(response):
+    """Log response after request completes."""
+    if request.path != '/api/health':
+        try:
+            duration_ms = int((datetime.utcnow() - g.request_start_time).total_seconds() * 1000)
+            log_info(
+                logger,
+                f"{request.method} {request.path} - {response.status_code}",
+                event_type="system",
+                correlation_id=getattr(g, 'correlation_id', None),
+                ip_address=request.remote_addr,
+                metadata={
+                    "status_code": response.status_code,
+                    "duration_ms": duration_ms,
+                    "method": request.method,
+                    "path": request.path
+                }
+            )
+        except Exception:
+            pass
+    return response
+
 # Token serializer for auth (uses Flask SECRET_KEY)
 token_serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
@@ -99,6 +177,17 @@ METRICS_CACHE = {}
 # External service URLs
 DECOY_GENERATOR_URL = os.getenv('DECOY_GENERATOR_URL', 'http://localhost:5002')
 THREAT_ATTRIBUTION_URL = os.getenv('THREAT_ATTRIBUTION_URL', 'http://localhost:5004')
+
+# Initialize event enrichment and SIEM integration (Tasks 17-20)
+if ENRICHMENT_AVAILABLE:
+    enrichment_service = EventEnrichmentService(
+        threat_attribution_url=THREAT_ATTRIBUTION_URL
+    )
+    siem_manager = SIEMIntegrationManager()
+    siem_manager.start()  # Start background SIEM export thread
+else:
+    enrichment_service = None
+    siem_manager = None
 
 # Database Models
 class User(db.Model):
@@ -476,6 +565,19 @@ def signup():
             user_id=user.id,
             ip_address=request.remote_addr,
         )
+        
+        # Structured logging
+        try:
+            log_audit(
+                logger,
+                f"User signup: {user.email}",
+                user_id=user.id,
+                ip_address=request.remote_addr,
+                correlation_id=getattr(g, 'correlation_id', None),
+                metadata={"email": user.email, "role": user.role}
+            )
+        except Exception:
+            pass
 
         return jsonify({
             "token": token,
@@ -511,6 +613,19 @@ def login():
         user_id=user.id,
         ip_address=request.remote_addr,
     )
+    
+    # Structured logging
+    try:
+        log_audit(
+            logger,
+            f"User login: {user.email}",
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            correlation_id=getattr(g, 'correlation_id', None),
+            metadata={"email": user.email, "role": user.role}
+        )
+    except Exception:
+        pass
 
     return jsonify({
         "token": token,
@@ -615,6 +730,25 @@ def deploy_decoy():
 
         db.session.add(decoy)
         db.session.commit()
+
+        # Structured logging for decoy deployment
+        try:
+            log_audit(
+                logger,
+                f"Decoy deployed: {decoy.name} (type: {decoy.type})",
+                user_id=g.current_user_id,
+                ip_address=request.remote_addr,
+                correlation_id=getattr(g, 'correlation_id', None),
+                metadata={
+                    "decoy_id": decoy.id,
+                    "decoy_type": decoy.type,
+                    "decoy_name": decoy.name,
+                    "port": decoy.port,
+                    "ip_address": decoy.ip_address
+                }
+            )
+        except Exception:
+            pass
 
         payload = {
             'id': decoy.id,
@@ -991,16 +1125,225 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'version': '1.0.0'
+        'version': '1.0.0',
+        'enrichment_available': ENRICHMENT_AVAILABLE
     })
+
+@app.route('/api/auth/test-token', methods=['GET', 'POST'])
+def get_test_token():
+    """
+    Development endpoint to get a test JWT token for API testing.
+    
+    This endpoint creates a test user if it doesn't exist and returns a token.
+    For production, use /api/auth/login or /api/auth/signup instead.
+    
+    Usage in Postman:
+    1. GET or POST to http://localhost:5000/api/auth/test-token
+    2. Copy the "token" from response
+    3. Use in Authorization header: "Bearer <token>"
+    """
+    try:
+        with app.app_context():
+            # Check if test user exists, create if not
+            test_email = "test@example.com"
+            test_user = User.query.filter_by(email=test_email).first()
+            
+            if not test_user:
+                # Create test user
+                test_user = User(
+                    email=test_email,
+                    name="Test User",
+                    role="admin"  # Give admin role for full access
+                )
+                test_user.set_password("test123456")
+                db.session.add(test_user)
+                db.session.commit()
+                logger.info("Created test user for API testing")
+            
+            # Generate token
+            token = _generate_auth_token(test_user)
+            
+            return jsonify({
+                "token": token,
+                "user": _user_to_dict(test_user),
+                "instructions": {
+                    "usage": "Use this token in Postman Authorization header",
+                    "header_format": "Authorization: Bearer <token>",
+                    "example": f"Authorization: Bearer {token[:20]}...",
+                    "note": "This is a development endpoint. Use /api/auth/login for production."
+                }
+            }), 200
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================================
+# Task 17-20: MITRE ATT&CK Attribution and SIEM Integration Endpoints
+# ============================================================================
+
+@app.route('/api/events/enrich', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def enrich_event():
+    """
+    Task 17: Enrich a detection event with MITRE ATT&CK technique IDs.
+    
+    Expected JSON body: {
+        "event": {raw event data},
+        "source_service": "traffic_monitor" | "behavioral_analysis" | "decoy_generator"
+    }
+    """
+    if not ENRICHMENT_AVAILABLE:
+        return jsonify({'error': 'Event enrichment service not available'}), 503
+    
+    try:
+        data = request.get_json() or {}
+        raw_event = data.get('event', {})
+        source_service = data.get('source_service', 'unknown')
+        
+        if not raw_event:
+            return jsonify({'error': 'No event data provided'}), 400
+        
+        # Enrich the event
+        enriched_event = enrichment_service.enrich_event(raw_event, source_service)
+        
+        # Export to SIEM immediately if configured
+        if siem_manager:
+            siem_manager.export_event_immediately(enriched_event)
+        
+        return jsonify({
+            'enriched_event': enriched_event.to_dict(),
+            'message': 'Event enriched and exported to SIEM'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/events/enriched', methods=['GET'])
+@auth_required()
+def get_enriched_events():
+    """Get recent enriched events"""
+    if not ENRICHMENT_AVAILABLE:
+        return jsonify({'error': 'Event enrichment service not available'}), 503
+    
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        events = enrichment_service.get_enriched_events(limit=limit)
+        
+        return jsonify({
+            'events': [e.to_dict() for e in events],
+            'count': len(events)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/siem/status', methods=['GET'])
+@auth_required()
+def get_siem_status():
+    """Get status of SIEM integrations"""
+    if not ENRICHMENT_AVAILABLE:
+        return jsonify({'error': 'SIEM integration not available'}), 503
+    
+    try:
+        status = {
+            'elastic': {
+                'enabled': siem_manager.elastic_exporter.enabled if siem_manager else False,
+                'url': siem_manager.elastic_exporter.elastic_url if siem_manager else None
+            },
+            'splunk': {
+                'enabled': siem_manager.splunk_exporter.enabled if siem_manager else False,
+                'url': siem_manager.splunk_exporter.splunk_url if siem_manager else None
+            },
+            'export_running': siem_manager.running if siem_manager else False
+        }
+        
+        return jsonify(status), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/help', methods=['GET'])
+def auth_help():
+    """
+    Help endpoint showing how to authenticate for API testing.
+    
+    Returns instructions for getting and using JWT tokens.
+    """
+    return jsonify({
+        "message": "How to get an authentication token for API testing",
+        "methods": {
+            "method_1_test_token": {
+                "description": "Quick test token (development only)",
+                "endpoint": "GET /api/auth/test-token",
+                "example": "http://localhost:5000/api/auth/test-token",
+                "returns": "Token for test user (admin role)"
+            },
+            "method_2_signup": {
+                "description": "Create new user account",
+                "endpoint": "POST /api/auth/signup",
+                "body": {
+                    "name": "Your Name",
+                    "email": "your@email.com",
+                    "password": "yourpassword"
+                },
+                "returns": "Token for new user"
+            },
+            "method_3_login": {
+                "description": "Login with existing account",
+                "endpoint": "POST /api/auth/login",
+                "body": {
+                    "email": "your@email.com",
+                    "password": "yourpassword"
+                },
+                "returns": "Token for authenticated user"
+            }
+        },
+        "usage_in_postman": {
+            "step_1": "Get token using one of the methods above",
+            "step_2": "Copy the 'token' value from response",
+            "step_3": "In Postman, go to Authorization tab",
+            "step_4": "Select 'Bearer Token' type",
+            "step_5": "Paste token in Token field",
+            "step_6": "Or manually add header: Authorization: Bearer <token>"
+        },
+        "example_curl": {
+            "get_token": "curl -X GET http://localhost:5000/api/auth/test-token",
+            "use_token": "curl -X GET http://localhost:5000/api/siem/status -H 'Authorization: Bearer YOUR_TOKEN_HERE'"
+        }
+    }), 200
 
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
+    try:
+        log_warning(
+            logger,
+            f"404 Not Found: {request.path}",
+            correlation_id=getattr(g, 'correlation_id', None),
+            ip_address=request.remote_addr,
+            metadata={"method": request.method, "path": request.path}
+        )
+    except Exception:
+        pass
     return jsonify({'error': 'Not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    db.session.rollback()
+    try:
+        log_error(
+            logger,
+            f"500 Internal Server Error: {str(error)}",
+            correlation_id=getattr(g, 'correlation_id', None),
+            ip_address=request.remote_addr,
+            metadata={
+                "method": request.method,
+                "path": request.path,
+                "error": str(error)
+            }
+        )
+    except Exception:
+        pass
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':

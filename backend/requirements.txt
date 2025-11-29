@@ -31,3 +31,4 @@ alembic==1.11.3
 # black==23.7.0
 # flake8==6.0.0
 # mypy==1.5.1
+psycopg2-binary==2.9.7

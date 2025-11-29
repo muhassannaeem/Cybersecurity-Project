@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # MySQL Database for Authentication
+  mysql_auth:
+    image: mysql:8.0
+    container_name: cybersecurity_mysql_auth
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: cybersecurity_db
+      MYSQL_USER: cyberuser
+      MYSQL_PASSWORD: cyberpass
+    ports:
+      - "3307:3306"  # Using 3307 to avoid conflict with existing services
+    volumes:
+      # Persist database data
+      - mysql_auth_data:/var/lib/mysql
+      # Initialize database with our schema
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cyber_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin (Optional - for easy database management)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: cybersecurity_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql_auth
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    ports:
+      - "8081:80"  # Using 8081 to avoid conflicts
+    depends_on:
+      - mysql_auth
+    networks:
+      - cyber_network
+
+volumes:
+  mysql_auth_data:
+    driver: local
+
+networks:
+  cyber_network:
+    driver: bridge
