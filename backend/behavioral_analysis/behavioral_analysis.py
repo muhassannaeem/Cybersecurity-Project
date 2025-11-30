@@ -274,6 +274,116 @@ class BehavioralAnalysisEngine:
         except Exception as e:
             logger.error(f"Error evaluating models: {e}")
     
+    def _retrain_lstm(self, X_train: np.ndarray, y_train: np.ndarray) -> bool:
+        """Retrain LSTM model with new data (Section 6 - Task 24)"""
+        try:
+            if self.lstm_model is None:
+                self._create_lstm_model()
+            
+            X_lstm = X_train.reshape(-1, 1, 10)
+            y_lstm = y_train.reshape(-1, 1)
+            
+            self.lstm_model.fit(
+                X_lstm, y_lstm,
+                epochs=50,
+                batch_size=32,
+                validation_split=0.2,
+                verbose=0
+            )
+            
+            # Save model
+            self.lstm_model.save(f"{self.model_path}/lstm_model.h5")
+            logger.info("LSTM model retrained successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error retraining LSTM: {e}")
+            return False
+    
+    def _retrain_isolation_forest(self, X_train: np.ndarray, y_train: np.ndarray) -> bool:
+        """Retrain Isolation Forest model with new data (Section 6 - Task 24)"""
+        try:
+            if self.isolation_forest is None:
+                self._create_isolation_forest()
+            
+            self.isolation_forest.fit(X_train)
+            
+            # Save model
+            joblib.dump(self.isolation_forest, f"{self.model_path}/isolation_forest.pkl")
+            logger.info("Isolation Forest model retrained successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error retraining Isolation Forest: {e}")
+            return False
+    
+    def _retrain_autoencoder(self, X_train: np.ndarray, y_train: np.ndarray) -> bool:
+        """Retrain Autoencoder model with new data (Section 6 - Task 24)"""
+        try:
+            if self.autoencoder is None:
+                self._create_autoencoder()
+            
+            self.autoencoder.fit(
+                X_train, X_train,
+                epochs=50,
+                batch_size=32,
+                validation_split=0.2,
+                verbose=0
+            )
+            
+            # Save model
+            self.autoencoder.save(f"{self.model_path}/autoencoder.h5")
+            logger.info("Autoencoder model retrained successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error retraining Autoencoder: {e}")
+            return False
+    
+    def _evaluate_model_performance(self, model_name: str, X_test: np.ndarray, y_test: np.ndarray) -> Dict:
+        """Evaluate a specific model's performance (Section 6 - Task 24)"""
+        try:
+            from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+            
+            if model_name == 'lstm':
+                X_test_reshaped = X_test.reshape(-1, 1, 10)
+                predictions = self.lstm_model.predict(X_test_reshaped)
+                y_pred = (predictions > 0.5).astype(int).flatten()
+            elif model_name == 'isolation_forest':
+                predictions = self.isolation_forest.predict(X_test)
+                y_pred = (predictions == -1).astype(int)
+            elif model_name == 'autoencoder':
+                reconstructed = self.autoencoder.predict(X_test)
+                errors = np.mean(np.square(X_test - reconstructed), axis=1)
+                threshold = np.percentile(errors, 90)
+                y_pred = (errors > threshold).astype(int)
+            else:
+                return {'error': f'Unknown model: {model_name}'}
+            
+            accuracy = accuracy_score(y_test, y_pred)
+            precision = precision_score(y_test, y_pred, zero_division=0)
+            recall = recall_score(y_test, y_pred, zero_division=0)
+            f1 = f1_score(y_test, y_pred, zero_division=0)
+            
+            tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+            false_positive_rate = fp / (fp + tn) if (fp + tn) > 0 else 0
+            
+            return {
+                'accuracy': float(accuracy),
+                'precision': float(precision),
+                'recall': float(recall),
+                'f1_score': float(f1),
+                'false_positive_rate': float(false_positive_rate),
+                'true_positives': int(tp),
+                'true_negatives': int(tn),
+                'false_positives': int(fp),
+                'false_negatives': int(fn)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error evaluating model performance: {e}")
+            return {'error': str(e)}
+    
     def detect_anomalies(self, data: np.ndarray) -> Dict[str, any]:
         """Detect anomalies using all three models"""
         try:
@@ -445,6 +555,65 @@ def detect_anomalies():
 def get_status():
     """Get model status"""
     return jsonify(analysis_engine.get_model_status())
+
+@app.route('/retrain', methods=['POST'])
+def retrain_model():
+    """Retrain a specific model with new data (Section 6 - Task 24)"""
+    try:
+        data = request.get_json()
+        model_name = data.get('model_name', 'lstm')
+        features = np.array(data.get('features', []))
+        labels = np.array(data.get('labels', []))
+        
+        if len(features) == 0 or len(labels) == 0:
+            return jsonify({'error': 'Features and labels required'}), 400
+        
+        # Retrain the specified model
+        if model_name == 'lstm':
+            success = analysis_engine._retrain_lstm(features, labels)
+        elif model_name == 'isolation_forest':
+            success = analysis_engine._retrain_isolation_forest(features, labels)
+        elif model_name == 'autoencoder':
+            success = analysis_engine._retrain_autoencoder(features, labels)
+        else:
+            return jsonify({'error': f'Unknown model: {model_name}'}), 400
+        
+        if success:
+            # Evaluate performance
+            performance = analysis_engine._evaluate_model_performance(model_name, features, labels)
+            
+            return jsonify({
+                'success': True,
+                'model_name': model_name,
+                'model_path': f"{analysis_engine.model_path}/{model_name}_model.h5" if model_name != 'isolation_forest' else f"{analysis_engine.model_path}/isolation_forest.pkl",
+                'performance_metrics': performance,
+                'training_samples': len(labels)
+            })
+        else:
+            return jsonify({'error': 'Retraining failed'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error retraining model: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/evaluate', methods=['POST'])
+def evaluate_model():
+    """Evaluate model performance on test data (Section 6 - Task 24)"""
+    try:
+        data = request.get_json()
+        model_name = data.get('model_name', 'lstm')
+        features = np.array(data.get('features', []))
+        labels = np.array(data.get('labels', []))
+        
+        if len(features) == 0 or len(labels) == 0:
+            return jsonify({'error': 'Features and labels required'}), 400
+        
+        performance = analysis_engine._evaluate_model_performance(model_name, features, labels)
+        return jsonify(performance)
+        
+    except Exception as e:
+        logger.error(f"Error evaluating model: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     # Train models on startup if they don't exist

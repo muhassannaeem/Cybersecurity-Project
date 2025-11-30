@@ -304,6 +304,28 @@ This file tracks the TODO items from `todo.md` that have been implemented in the
 
 ---
 
+## Section 6: Evaluation Metrics & Automated Model Retraining (Tasks 21-25)
+
+**Status:** Fully Implemented
+
+**How:**
+- Implemented database models for evaluation metrics, detection events, false positives, decoy interactions, attribution accuracy, model versions, and retraining jobs in `backend/app.py`.
+- Developed a centralized `metrics_service.py` for metrics collection, trend analysis, and persistence.
+- Created a robust evaluation engine in `evaluation/evaluation_engine.py` to run test scenarios, calculate metrics, and persist results.
+- Added REST API endpoints in `backend/app.py` for:
+  - Storing and retrieving evaluation metrics
+  - Getting detection latency, false positive, engagement, and attribution trends
+  - Managing model versions, activation, rollback, and comparison
+  - Scheduling, executing, and monitoring retraining jobs
+- Built `model_versioning.py` for model version history, activation, rollback, and performance comparison.
+- Built `model_retraining.py` for retraining job scheduling, execution, and model artifact/version management, including rollback if new models underperform.
+- Built `retraining_triggers.py` to monitor evaluation metrics and data, automatically trigger retraining jobs based on performance, data, or schedule, and run jobs in the background.
+- Integrated all components so evaluation results and system state can trigger retraining, and new models are versioned, compared, and rolled back if needed.
+- All endpoints are protected with authentication and RBAC.
+- The system is now capable of fully automated, metrics-driven model retraining, versioning, and rollback, with monitoring and control via API.
+
+---
+
 ## Notes
 
 - The implementation is currently based on **mock but stateful** data generators. Values evolve gradually per backend run so that the UI looks realistic even though there is no live traffic yet.

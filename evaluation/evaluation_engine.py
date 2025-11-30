@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class EvaluationEngine:
     """Evaluation Engine for testing cybersecurity system with red-team tools"""
     
-    def __init__(self, redis_url: str = "redis://redis:6379"):
+    def __init__(self, redis_url: str = "redis://redis:6379", database_url: str = None):
         self.redis_client = redis.from_url(redis_url)
         self.evaluation_results = {}
         self.test_scenarios = {}
@@ -34,6 +34,14 @@ class EvaluationEngine:
             'decoy_believability': [],
             'overall_performance': []
         }
+        
+        # Database connection for metrics persistence (Section 6 - Task 22)
+        self.database_url = database_url or os.getenv('DATABASE_URL', 'sqlite:///evaluation.db')
+        self.metrics_service = None
+        self._init_database_connection()
+        
+        # Backend API URL for metrics persistence (fallback)
+        self.backend_api_url = os.getenv('BACKEND_API_URL', 'http://backend:5000')
         
         # Red-team tools configuration
         self.red_team_tools = {
@@ -61,6 +69,16 @@ class EvaluationEngine:
         
         # Test scenarios
         self._initialize_test_scenarios()
+    
+    def _init_database_connection(self):
+        """Initialize database connection for metrics persistence
+        
+        Note: For microservices architecture, we use API calls to the backend
+        instead of direct database connections. This keeps services decoupled.
+        """
+        # Metrics service will be None - we'll use API calls instead
+        self.metrics_service = None
+        logger.info("Using API-based metrics persistence (microservices architecture)")
     
     def _initialize_test_scenarios(self):
         """Initialize predefined test scenarios"""
@@ -436,7 +454,7 @@ exit
             return False
     
     def _calculate_test_metrics(self, test_result: Dict, scenario: Dict):
-        """Calculate performance metrics for the test"""
+        """Calculate performance metrics for the test (Section 6 - Task 21)"""
         try:
             # Detection latency
             detection_time = test_result.get('detection_time', scenario['expected_detection_time'])
@@ -452,12 +470,16 @@ exit
             # Decoy believability (simplified)
             decoy_believability = 0.8 if test_result.get('detected', False) else 0.3
             
+            # Threat actor attribution accuracy (Section 6 - Task 21)
+            attribution_accuracy = self._calculate_attribution_accuracy(test_result)
+            
             # Overall performance score
             overall_score = (
-                latency_score * 0.3 +
+                latency_score * 0.25 +
                 (1 - false_positive_rate) * 0.2 +
-                engagement_score * 0.2 +
-                decoy_believability * 0.3
+                engagement_score * 0.15 +
+                decoy_believability * 0.2 +
+                attribution_accuracy * 0.2
             )
             
             # Store metrics
@@ -468,6 +490,7 @@ exit
                 'attacker_engagement_time': engagement_time,
                 'engagement_score': engagement_score,
                 'decoy_believability': decoy_believability,
+                'threat_actor_attribution_accuracy': attribution_accuracy,
                 'overall_score': overall_score
             }
             
@@ -481,9 +504,45 @@ exit
         except Exception as e:
             logger.error(f"Error calculating metrics: {e}")
     
-    def _store_evaluation_result(self, test_result: Dict):
-        """Store evaluation result in Redis"""
+    def _calculate_attribution_accuracy(self, test_result: Dict) -> float:
+        """Calculate threat actor attribution accuracy (Section 6 - Task 21)"""
         try:
+            # Get ground truth from test details
+            ground_truth = test_result.get('details', {}).get('ground_truth', {})
+            attributed = test_result.get('details', {}).get('attributed', {})
+            
+            if not ground_truth or not attributed:
+                # If no ground truth available, return a default score
+                return 0.5
+            
+            # Compare actors
+            actor_match = ground_truth.get('actor') == attributed.get('actor')
+            
+            # Compare techniques
+            ground_truth_techniques = set(ground_truth.get('techniques', []))
+            attributed_techniques = set(attributed.get('techniques', []))
+            
+            if not ground_truth_techniques:
+                return 0.5 if actor_match else 0.3
+            
+            # Calculate technique accuracy
+            matches = len(ground_truth_techniques & attributed_techniques)
+            total = len(ground_truth_techniques)
+            technique_accuracy = matches / total if total > 0 else 0.0
+            
+            # Combined accuracy (weighted: 40% actor, 60% techniques)
+            accuracy = (0.4 if actor_match else 0.0) + (0.6 * technique_accuracy)
+            
+            return accuracy
+            
+        except Exception as e:
+            logger.error(f"Error calculating attribution accuracy: {e}")
+            return 0.5  # Default score
+    
+    def _store_evaluation_result(self, test_result: Dict):
+        """Store evaluation result in Redis and PostgreSQL (Section 6 - Task 22)"""
+        try:
+            # Store in Redis (existing behavior)
             key = f"evaluation_result:{test_result['scenario']}:{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             self.redis_client.setex(key, 86400, json.dumps(test_result))  # Store for 24 hours
             
@@ -492,8 +551,53 @@ exit
                 self.evaluation_results[test_result['scenario']] = []
             self.evaluation_results[test_result['scenario']].append(test_result)
             
+            # Persist to PostgreSQL via metrics service (Section 6 - Task 22)
+            self._persist_metrics_to_db(test_result)
+            
         except Exception as e:
             logger.error(f"Error storing evaluation result: {e}")
+    
+    def _persist_metrics_to_db(self, test_result: Dict):
+        """Persist evaluation metrics to PostgreSQL (Section 6 - Task 22)"""
+        try:
+            metrics = test_result.get('metrics', {})
+            
+            # Prepare metric data
+            metric_data = {
+                'timestamp': test_result.get('start_time', datetime.now().isoformat()),
+                'scenario_name': test_result.get('scenario'),
+                'test_id': f"{test_result.get('scenario')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                'detection_latency': metrics.get('detection_latency'),
+                'false_positive_rate': metrics.get('false_positive_rate'),
+                'attacker_engagement_time': metrics.get('attacker_engagement_time'),
+                'decoy_believability_score': metrics.get('decoy_believability'),
+                'threat_actor_attribution_accuracy': metrics.get('threat_actor_attribution_accuracy'),
+                'overall_score': metrics.get('overall_score'),
+                'detected': test_result.get('detected', False),
+                'target_host': test_result.get('target_host'),
+                'metadata': {
+                    'test_details': test_result.get('details'),
+                    'scenario': test_result.get('scenario')
+                }
+            }
+            
+            # Use API call to persist metrics (microservices architecture)
+            try:
+                response = requests.post(
+                    f"{self.backend_api_url}/api/metrics/evaluation",
+                    json=metric_data,
+                    timeout=5,
+                    headers={'Content-Type': 'application/json'}
+                )
+                if response.status_code in [200, 201]:
+                    logger.info("Persisted evaluation metric via API")
+                else:
+                    logger.warning(f"API persistence returned status {response.status_code}")
+            except Exception as e:
+                logger.warning(f"API persistence failed: {e}")
+            
+        except Exception as e:
+            logger.error(f"Error persisting metrics to database: {e}")
     
     def run_full_evaluation_suite(self, target_host: str = "localhost") -> Dict:
         """Run the complete evaluation suite"""

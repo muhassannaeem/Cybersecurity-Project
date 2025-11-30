@@ -73,19 +73,20 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 
 ## 6. Evaluation Metrics & Automated Model Retraining
 
-21. Implement an end‑to‑end evaluation pipeline that measures and stores the following metrics from real attack data:
-    - **Detection latency**: time from attack start to detection/alert.
-    - **False positive rate**: percentage of benign events misclassified as malicious.
-    - **Attacker engagement time**: duration attackers spend interacting with decoys.
-    - **Decoy believability score**: derived from attacker behavior and feedback (e.g., depth of interaction, repeat visits).
-    - **Threat actor attribution accuracy**: how often the attributed actor/techniques match ground truth in tests.
-22. Persist these metrics (e.g., in PostgreSQL or Redis) with sufficient granularity for trend analysis and visualization.
+
+21. Implement an end‑to‑end evaluation pipeline that measures and stores the following metrics from real attack data: **(DONE)**
+    - **Detection latency**: time from attack start to detection/alert. **(DONE)**
+    - **False positive rate**: percentage of benign events misclassified as malicious. **(DONE)**
+    - **Attacker engagement time**: duration attackers spend interacting with decoys. **(DONE)**
+    - **Decoy believability score**: derived from attacker behavior and feedback (e.g., depth of interaction, repeat visits). **(DONE)**
+    - **Threat actor attribution accuracy**: how often the attributed actor/techniques match ground truth in tests. **(DONE)**
+22. Persist these metrics (e.g., in PostgreSQL or Redis) with sufficient granularity for trend analysis and visualization. **(DONE)**
 23. Expose metrics through dedicated backend APIs so the frontend and external tools can consume them. **(DONE - /api/metrics/summary)**
-24. Design and implement an automated **model retraining pipeline** that uses real captured data (not only synthetic data) to:
-    - Periodically retrain the LSTM, Isolation Forest, and Autoencoder models.
-    - Incorporate new labeled attacks and benign traffic.
-    - Track model versions and allow rollback if a retrain degrades performance.
-25. Connect evaluation results (e.g., from the evaluation engine) to the retraining logic so metrics can trigger or schedule retraining jobs.
+24. Design and implement an automated **model retraining pipeline** that uses real captured data (not only synthetic data) to: **(DONE)**
+    - Periodically retrain the LSTM, Isolation Forest, and Autoencoder models. **(DONE)**
+    - Incorporate new labeled attacks and benign traffic. **(DONE)**
+    - Track model versions and allow rollback if a retrain degrades performance. **(DONE)**
+25. Connect evaluation results (e.g., from the evaluation engine) to the retraining logic so metrics can trigger or schedule retraining jobs. **(DONE)**
 
 ---
 

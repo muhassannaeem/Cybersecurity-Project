@@ -555,6 +555,227 @@ class Alert(db.Model):
     status = db.Column(db.String(20), default='new')
 
 
+# =====================================================
+# Metrics Models (Section 6 - Task 21-22)
+# =====================================================
+
+class EvaluationMetric(db.Model):
+    """Store comprehensive evaluation test results"""
+    __tablename__ = 'evaluation_metrics'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    scenario_name = db.Column(db.String(100), nullable=False, index=True)
+    test_id = db.Column(db.String(255), unique=True)
+    
+    # Core Metrics (Task 21)
+    detection_latency = db.Column(db.Numeric(10, 3))
+    false_positive_rate = db.Column(db.Numeric(5, 4))
+    attacker_engagement_time = db.Column(db.Numeric(10, 3))
+    decoy_believability_score = db.Column(db.Numeric(5, 4))
+    threat_actor_attribution_accuracy = db.Column(db.Numeric(5, 4))
+    
+    # Additional Metrics
+    overall_score = db.Column(db.Numeric(5, 4))
+    detected = db.Column(db.Boolean, default=False, index=True)
+    target_host = db.Column(db.String(255))
+    
+    # Metadata
+    metadata = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+class DetectionEvent(db.Model):
+    """Track detection latency from real attack data"""
+    __tablename__ = 'detection_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    attack_start_time = db.Column(db.DateTime, nullable=False, index=True)
+    detection_time = db.Column(db.DateTime, nullable=False, index=True)
+    detection_latency_seconds = db.Column(db.Numeric(10, 3), nullable=False)
+    
+    # Attack Details
+    source_ip = db.Column(db.String(45), index=True)
+    destination_ip = db.Column(db.String(45))
+    attack_type = db.Column(db.String(100), index=True)
+    detected_by = db.Column(db.String(100), index=True)
+    confidence_score = db.Column(db.Numeric(5, 4))
+    
+    # Additional Context
+    threat_id = db.Column(db.Integer)
+    alert_id = db.Column(db.Integer)
+    metadata = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+class FalsePositiveEvent(db.Model):
+    """Track false positive classifications"""
+    __tablename__ = 'false_positive_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    event_type = db.Column(db.String(100), nullable=False, index=True)
+    source_ip = db.Column(db.String(45), index=True)
+    destination_ip = db.Column(db.String(45))
+    
+    # False Positive Details
+    false_positive_type = db.Column(db.String(100), index=True)
+    original_label = db.Column(db.String(100))
+    corrected_label = db.Column(db.String(100))
+    confidence_score = db.Column(db.Numeric(5, 4))
+    
+    # Context
+    detected_by = db.Column(db.String(100))
+    corrected_by = db.Column(db.String(100))
+    correction_timestamp = db.Column(db.DateTime)
+    
+    # Metadata
+    metadata = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+class DecoyInteraction(db.Model):
+    """Track attacker engagement with decoys"""
+    __tablename__ = 'decoy_interactions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    decoy_id = db.Column(db.Integer, index=True)
+    decoy_type = db.Column(db.String(50))
+    attacker_ip = db.Column(db.String(45), nullable=False, index=True)
+    
+    # Engagement Timing
+    interaction_start = db.Column(db.DateTime, nullable=False, index=True)
+    interaction_end = db.Column(db.DateTime)
+    engagement_duration = db.Column(db.Numeric(10, 3))
+    
+    # Engagement Metrics
+    actions_count = db.Column(db.Integer, default=0)
+    depth_score = db.Column(db.Numeric(5, 4))
+    believability_score = db.Column(db.Numeric(5, 4))
+    repeat_visits = db.Column(db.Integer, default=0)
+    
+    # Interaction Details
+    first_action = db.Column(db.String(255))
+    last_action = db.Column(db.String(255))
+    actions_taken = db.Column(db.JSON)
+    
+    # Metadata
+    metadata = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+class ThreatAttributionAccuracy(db.Model):
+    """Track accuracy of threat actor attribution"""
+    __tablename__ = 'threat_attribution_accuracy'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    test_id = db.Column(db.String(255), index=True)
+    evaluation_metric_id = db.Column(db.Integer, index=True)
+    
+    # Attribution Details
+    ground_truth_actor = db.Column(db.String(255))
+    attributed_actor = db.Column(db.String(255))
+    ground_truth_techniques = db.Column(db.JSON)
+    attributed_techniques = db.Column(db.JSON)
+    
+    # Accuracy Metrics
+    actor_match = db.Column(db.Boolean, index=True)
+    technique_matches = db.Column(db.Integer)
+    technique_total = db.Column(db.Integer)
+    accuracy_score = db.Column(db.Numeric(5, 4))
+    
+    # Confidence
+    confidence_score = db.Column(db.Numeric(5, 4))
+    
+    # Metadata
+    metadata = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+class ModelVersion(db.Model):
+    """Track ML model versions and performance"""
+    __tablename__ = 'model_versions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    model_name = db.Column(db.String(100), nullable=False, index=True)
+    version = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Training Details
+    training_data_size = db.Column(db.Integer)
+    training_start_time = db.Column(db.DateTime)
+    training_end_time = db.Column(db.DateTime)
+    training_duration_seconds = db.Column(db.Integer)
+    
+    # Performance Metrics
+    performance_metrics = db.Column(db.JSON)
+    validation_metrics = db.Column(db.JSON)
+    test_metrics = db.Column(db.JSON)
+    
+    # Model Storage
+    file_path = db.Column(db.String(500))
+    file_size_bytes = db.Column(db.BigInteger)
+    model_hash = db.Column(db.String(64))
+    
+    # Version Management
+    is_active = db.Column(db.Boolean, default=False, index=True)
+    previous_version_id = db.Column(db.Integer, index=True)
+    activated_at = db.Column(db.DateTime)
+    deactivated_at = db.Column(db.DateTime)
+    
+    # Metadata
+    metadata = db.Column(db.JSON)
+    created_at_timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('model_name', 'version', name='unique_model_version'),
+    )
+
+
+class RetrainingJob(db.Model):
+    """Track automated model retraining jobs"""
+    __tablename__ = 'retraining_jobs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    model_name = db.Column(db.String(100), nullable=False, index=True)
+    status = db.Column(db.String(50), default='pending', index=True)
+    
+    # Job Timing
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    duration_seconds = db.Column(db.Integer)
+    
+    # Trigger Information
+    trigger_type = db.Column(db.String(100), index=True)
+    trigger_reason = db.Column(db.Text)
+    triggered_by = db.Column(db.String(100))
+    
+    # Training Data
+    training_data_size = db.Column(db.Integer)
+    real_attack_samples = db.Column(db.Integer)
+    benign_samples = db.Column(db.Integer)
+    synthetic_samples = db.Column(db.Integer)
+    
+    # Results
+    new_version_id = db.Column(db.Integer, index=True)
+    previous_version_id = db.Column(db.Integer)
+    performance_comparison = db.Column(db.JSON)
+    rollback_performed = db.Column(db.Boolean, default=False)
+    rollback_reason = db.Column(db.Text)
+    
+    # Error Handling
+    error_message = db.Column(db.Text)
+    error_traceback = db.Column(db.Text)
+    
+    # Metadata
+    metadata = db.Column(db.JSON)
+
+
 # Simple audit logging helper
 def log_action(action: str, details=None, user_id: int | None = None, ip_address: str | None = None):
     """Persist a lightweight audit log entry.
@@ -1358,6 +1579,154 @@ def get_metrics_summary():
     }
     return jsonify(response)
 
+
+# ================================
+# Enhanced Metrics API Endpoints (Section 6 - Task 23)
+# ================================
+
+# Initialize metrics service
+try:
+    from metrics_service import MetricsService
+    metrics_service = MetricsService(db.session)
+except Exception as e:
+    logger.warning(f"Could not initialize metrics service: {e}")
+    metrics_service = None
+
+
+@app.route('/api/metrics/evaluation', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def store_evaluation_metric():
+    """Store evaluation metric from evaluation engine (Section 6 - Task 22)"""
+    try:
+        if not metrics_service:
+            return jsonify({'error': 'Metrics service not available'}), 503
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        metric_id = metrics_service.store_evaluation_metric(data)
+        if metric_id:
+            return jsonify({'id': metric_id, 'message': 'Metric stored successfully'}), 201
+        else:
+            return jsonify({'error': 'Failed to store metric'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error storing evaluation metric: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/metrics/evaluation', methods=['GET'])
+@auth_required()
+def get_evaluation_metrics():
+    """Get evaluation metrics with filtering (Section 6 - Task 23)"""
+    try:
+        if not metrics_service:
+            return jsonify({'error': 'Metrics service not available'}), 503
+        
+        scenario_name = request.args.get('scenario')
+        days = request.args.get('days', 30, type=int)
+        
+        summary = metrics_service.get_evaluation_summary(scenario_name, days)
+        return jsonify(summary)
+        
+    except Exception as e:
+        logger.error(f"Error getting evaluation metrics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/metrics/detection-latency', methods=['GET'])
+@auth_required()
+def get_detection_latency_trends():
+    """Get detection latency trends over time (Section 6 - Task 23)"""
+    try:
+        if not metrics_service:
+            return jsonify({'error': 'Metrics service not available'}), 503
+        
+        days = request.args.get('days', 30, type=int)
+        trends = metrics_service.get_detection_latency_trends(days)
+        return jsonify({'trends': trends, 'days': days})
+        
+    except Exception as e:
+        logger.error(f"Error getting detection latency trends: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/metrics/false-positives', methods=['GET'])
+@auth_required()
+def get_false_positive_trends():
+    """Get false positive rate trends over time (Section 6 - Task 23)"""
+    try:
+        if not metrics_service:
+            return jsonify({'error': 'Metrics service not available'}), 503
+        
+        days = request.args.get('days', 30, type=int)
+        trends = metrics_service.get_false_positive_rate_trends(days)
+        return jsonify({'trends': trends, 'days': days})
+        
+    except Exception as e:
+        logger.error(f"Error getting false positive trends: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/metrics/decoy-engagement', methods=['GET'])
+@auth_required()
+def get_decoy_engagement_metrics():
+    """Get decoy engagement metrics (Section 6 - Task 23)"""
+    try:
+        if not metrics_service:
+            return jsonify({'error': 'Metrics service not available'}), 503
+        
+        days = request.args.get('days', 30, type=int)
+        metrics = metrics_service.get_decoy_engagement_metrics(days)
+        return jsonify(metrics)
+        
+    except Exception as e:
+        logger.error(f"Error getting decoy engagement metrics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/metrics/attribution-accuracy', methods=['GET'])
+@auth_required()
+def get_attribution_accuracy_metrics():
+    """Get threat attribution accuracy metrics (Section 6 - Task 23)"""
+    try:
+        if not metrics_service:
+            return jsonify({'error': 'Metrics service not available'}), 503
+        
+        days = request.args.get('days', 30, type=int)
+        metrics = metrics_service.get_attribution_accuracy_metrics(days)
+        return jsonify(metrics)
+        
+    except Exception as e:
+        logger.error(f"Error getting attribution accuracy metrics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/metrics/trends', methods=['GET'])
+@auth_required()
+def get_all_metrics_trends():
+    """Get aggregated trends for all metrics (Section 6 - Task 23)"""
+    try:
+        if not metrics_service:
+            return jsonify({'error': 'Metrics service not available'}), 503
+        
+        days = request.args.get('days', 30, type=int)
+        
+        return jsonify({
+            'detection_latency': metrics_service.get_detection_latency_trends(days),
+            'false_positive_rate': metrics_service.get_false_positive_rate_trends(days),
+            'decoy_engagement': metrics_service.get_decoy_engagement_metrics(days),
+            'attribution_accuracy': metrics_service.get_attribution_accuracy_metrics(days),
+            'evaluation_summary': metrics_service.get_evaluation_summary(days=days),
+            'days': days
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting metrics trends: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 # ================================
 # Traffic Monitoring API Endpoints
 # ================================
@@ -2051,6 +2420,285 @@ def internal_error(error):
     except Exception:
         pass
     return jsonify({'error': 'Internal server error'}), 500
+
+# ================================
+# Model Versioning & Retraining API Endpoints (Section 6 - Task 24-25)
+# ================================
+
+# Initialize model versioning and retraining
+# Note: We use a factory function to create instances with proper session handling
+try:
+    from model_versioning import ModelVersionManager
+    from model_retraining import ModelRetrainingPipeline
+    from retraining_triggers import RetrainingTriggerSystem
+    
+    # Create factory functions that use db.session within request context
+    def get_model_version_manager():
+        """Get model version manager with current session"""
+        return ModelVersionManager(db.session)
+    
+    def get_retraining_pipeline():
+        """Get retraining pipeline with current session"""
+        return ModelRetrainingPipeline(db.session)
+    
+    def get_retraining_trigger_system():
+        """Get retraining trigger system with current session"""
+        pipeline = get_retraining_pipeline()
+        return RetrainingTriggerSystem(db.session, pipeline)
+    
+    # Initialize for background thread (needs app context)
+    with app.app_context():
+        model_version_manager = ModelVersionManager(db.session)
+        retraining_pipeline = ModelRetrainingPipeline(db.session)
+        retraining_trigger_system = RetrainingTriggerSystem(db.session, retraining_pipeline)
+        
+        # Start background monitoring
+        retraining_trigger_system.start()
+        logger.info("Model retraining trigger system initialized and started")
+except Exception as e:
+    logger.warning(f"Could not initialize model retraining system: {e}")
+    import traceback
+    logger.warning(traceback.format_exc())
+    model_version_manager = None
+    retraining_pipeline = None
+    retraining_trigger_system = None
+
+
+@app.route('/api/models/versions', methods=['GET'])
+@auth_required()
+def get_model_versions():
+    """Get model version history (Section 6 - Task 24)"""
+    try:
+        if not model_version_manager:
+            return jsonify({'error': 'Model versioning not available'}), 503
+        
+        model_name = request.args.get('model_name')
+        if not model_name:
+            return jsonify({'error': 'model_name parameter required'}), 400
+        
+        limit = request.args.get('limit', 10, type=int)
+        versions = model_version_manager.get_version_history(model_name, limit)
+        return jsonify({'model_name': model_name, 'versions': versions})
+        
+    except Exception as e:
+        logger.error(f"Error getting model versions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/models/active', methods=['GET'])
+@auth_required()
+def get_active_model_version():
+    """Get active model version (Section 6 - Task 24)"""
+    try:
+        from model_versioning import ModelVersionManager
+        
+        model_name = request.args.get('model_name')
+        if not model_name:
+            return jsonify({'error': 'model_name parameter required'}), 400
+        
+        version_mgr = ModelVersionManager(db.session)
+        version = version_mgr.get_active_version(model_name)
+        if version:
+            return jsonify(version)
+        else:
+            return jsonify({'error': 'No active version found'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error getting active version: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/models/rollback', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def rollback_model_version():
+    """Rollback to a previous model version (Section 6 - Task 24)"""
+    try:
+        from model_versioning import ModelVersionManager
+        
+        data = request.get_json()
+        model_name = data.get('model_name')
+        version = data.get('version')
+        
+        if not model_name or not version:
+            return jsonify({'error': 'model_name and version required'}), 400
+        
+        version_mgr = ModelVersionManager(db.session)
+        success = version_mgr.rollback_to_version(model_name, version)
+        if success:
+            log_action(
+                'rollback_model',
+                {'model_name': model_name, 'version': version},
+                user_id=getattr(g, 'current_user_id', None),
+                ip_address=request.remote_addr
+            )
+            return jsonify({'success': True, 'message': f'Rolled back {model_name} to version {version}'})
+        else:
+            return jsonify({'error': 'Rollback failed'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error rolling back model: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/models/compare', methods=['GET'])
+@auth_required()
+def compare_model_versions():
+    """Compare two model versions (Section 6 - Task 24)"""
+    try:
+        from model_versioning import ModelVersionManager
+        
+        model_name = request.args.get('model_name')
+        version1 = request.args.get('version1', type=int)
+        version2 = request.args.get('version2', type=int)
+        
+        if not all([model_name, version1, version2]):
+            return jsonify({'error': 'model_name, version1, and version2 required'}), 400
+        
+        version_mgr = ModelVersionManager(db.session)
+        comparison = version_mgr.compare_versions(model_name, version1, version2)
+        if comparison:
+            return jsonify(comparison)
+        else:
+            return jsonify({'error': 'Versions not found'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error comparing versions: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/models/retrain', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def trigger_model_retraining():
+    """Manually trigger model retraining (Section 6 - Task 24)"""
+    try:
+        from model_retraining import ModelRetrainingPipeline
+        
+        data = request.get_json() or {}
+        model_name = data.get('model_name', 'lstm')
+        
+        pipeline = ModelRetrainingPipeline(db.session)
+        job_id = pipeline.schedule_retraining(
+            model_name=model_name,
+            trigger_type='manual',
+            trigger_reason=data.get('reason', 'Manual retraining request')
+        )
+        
+        if job_id:
+            log_action(
+                'trigger_retraining',
+                {'model_name': model_name, 'job_id': job_id},
+                user_id=getattr(g, 'current_user_id', None),
+                ip_address=request.remote_addr
+            )
+            
+            # Execute in background with app context
+            import threading
+            def execute_with_context():
+                with app.app_context():
+                    pipeline.execute_retraining_job(job_id)
+            
+            threading.Thread(target=execute_with_context, daemon=True).start()
+            
+            return jsonify({'job_id': job_id, 'status': 'scheduled', 'message': 'Retraining job scheduled'}), 202
+        else:
+            return jsonify({'error': 'Failed to schedule retraining'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error triggering retraining: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/models/retrain/jobs', methods=['GET'])
+@auth_required()
+def get_retraining_jobs():
+    """Get retraining job history (Section 6 - Task 24)"""
+    try:
+        from app import RetrainingJob
+        
+        model_name = request.args.get('model_name')
+        status = request.args.get('status')
+        limit = request.args.get('limit', 20, type=int)
+        
+        query = db.session.query(RetrainingJob)
+        
+        if model_name:
+            query = query.filter(RetrainingJob.model_name == model_name)
+        if status:
+            query = query.filter(RetrainingJob.status == status)
+        
+        jobs = query.order_by(RetrainingJob.created_at.desc()).limit(limit).all()
+        
+        return jsonify({
+            'jobs': [
+                {
+                    'job_id': job.job_id,
+                    'model_name': job.model_name,
+                    'status': job.status,
+                    'trigger_type': job.trigger_type,
+                    'trigger_reason': job.trigger_reason,
+                    'created_at': job.created_at.isoformat() if job.created_at else None,
+                    'started_at': job.started_at.isoformat() if job.started_at else None,
+                    'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+                    'duration_seconds': job.duration_seconds,
+                    'new_version_id': job.new_version_id,
+                    'rollback_performed': job.rollback_performed,
+                    'error_message': job.error_message
+                }
+                for job in jobs
+            ]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting retraining jobs: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/models/retrain/check', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def check_retraining_conditions():
+    """Manually check retraining conditions (Section 6 - Task 25)"""
+    try:
+        from retraining_triggers import RetrainingTriggerSystem
+        from model_retraining import ModelRetrainingPipeline
+        
+        data = request.get_json() or {}
+        model_name = data.get('model_name')
+        
+        pipeline = ModelRetrainingPipeline(db.session)
+        trigger_system = RetrainingTriggerSystem(db.session, pipeline)
+        
+        if model_name:
+            # Check specific model
+            performance_check = trigger_system._check_performance_degradation(model_name)
+            data_check = trigger_system._check_sufficient_new_data(model_name)
+            scheduled_check = trigger_system._check_scheduled_retrain(model_name)
+            
+            return jsonify({
+                'model_name': model_name,
+                'performance_degradation': performance_check,
+                'sufficient_new_data': data_check,
+                'scheduled_retrain_due': scheduled_check,
+                'should_retrain': performance_check or data_check or scheduled_check
+            })
+        else:
+            # Check all models
+            trigger_system.check_retraining_conditions()
+            return jsonify({'message': 'Retraining conditions checked for all models'})
+            
+    except Exception as e:
+        logger.error(f"Error checking retraining conditions: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     with app.app_context():
