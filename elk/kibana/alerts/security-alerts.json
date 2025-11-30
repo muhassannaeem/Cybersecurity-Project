@@ -1,0 +1,245 @@
+{
+  "version": "8.11.0",
+  "objects": [
+    {
+      "id": "high-error-rate-alert",
+      "type": "alert",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "name": "High Service Error Rate",
+        "consumer": "alerts",
+        "enabled": true,
+        "alertTypeId": ".index-threshold",
+        "schedule": {
+          "interval": "1m"
+        },
+        "params": {
+          "index": ["cybersecurity-system-*"],
+          "timeField": "@timestamp",
+          "aggType": "count",
+          "termSize": 5,
+          "termField": "container.labels.com_docker_compose_service.keyword",
+          "thresholdComparator": ">",
+          "threshold": [10],
+          "timeWindowSize": 5,
+          "timeWindowUnit": "m",
+          "filterQuery": {
+            "bool": {
+              "should": [
+                {"match": {"stream": "stderr"}},
+                {"query_string": {"query": "message:*error*"}},
+                {"query_string": {"query": "message:*ERROR*"}},
+                {"query_string": {"query": "message:*exception*"}},
+                {"query_string": {"query": "message:*Exception*"}},
+                {"query_string": {"query": "message:*failed*"}},
+                {"query_string": {"query": "message:*FAILED*"}}
+              ]
+            }
+          }
+        },
+        "actions": [
+          {
+            "id": "email-action",
+            "group": "threshold met", 
+            "params": {
+              "to": ["admin@cybersecurity.local"],
+              "subject": "High Error Rate Alert - {{context.service}}",
+              "message": "Service {{context.service}} has exceeded error threshold with {{context.value}} errors in the last 5 minutes. Immediate attention required.\n\nTimestamp: {{context.date}}\nThreshold: {{context.threshold}}\n\nPlease investigate immediately."
+            }
+          }
+        ],
+        "tags": ["cybersecurity", "service-health", "errors"],
+        "throttle": "5m"
+      }
+    },
+    {
+      "id": "service-down-alert",
+      "type": "alert",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "name": "Service Down Detection",
+        "consumer": "alerts",
+        "enabled": true,
+        "alertTypeId": ".index-threshold",
+        "schedule": {
+          "interval": "2m"
+        },
+        "params": {
+          "index": ["cybersecurity-system-*"],
+          "timeField": "@timestamp",
+          "aggType": "count",
+          "termSize": 10,
+          "termField": "container.labels.com_docker_compose_service.keyword",
+          "thresholdComparator": "<",
+          "threshold": [1],
+          "timeWindowSize": 10,
+          "timeWindowUnit": "m"
+        },
+        "actions": [
+          {
+            "id": "email-action",
+            "group": "threshold met",
+            "params": {
+              "to": ["admin@cybersecurity.local", "ops@cybersecurity.local"],
+              "subject": "CRITICAL: Service Down Alert - {{context.service}}",
+              "message": "CRITICAL ALERT: Service {{context.service}} appears to be down!\n\nNo log activity detected in the last 10 minutes.\nLast seen: {{context.date}}\n\nImmediate investigation required:\n1. Check container status\n2. Review service logs\n3. Verify network connectivity\n4. Restart service if necessary"
+            }
+          }
+        ],
+        "tags": ["cybersecurity", "critical", "service-down"],
+        "throttle": "2m"
+      }
+    },
+    {
+      "id": "threat-detection-alert",
+      "type": "alert",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "name": "Threat Detection Alert",
+        "consumer": "alerts",
+        "enabled": true,
+        "alertTypeId": ".index-threshold",
+        "schedule": {
+          "interval": "30s"
+        },
+        "params": {
+          "index": ["cybersecurity-system-*"],
+          "timeField": "@timestamp",
+          "aggType": "count",
+          "thresholdComparator": ">=",
+          "threshold": [1],
+          "timeWindowSize": 1,
+          "timeWindowUnit": "m",
+          "filterQuery": {
+            "bool": {
+              "should": [
+                {"query_string": {"query": "message:*threat*"}},
+                {"query_string": {"query": "message:*attack*"}},
+                {"query_string": {"query": "message:*malicious*"}},
+                {"query_string": {"query": "message:*anomaly*"}},
+                {"query_string": {"query": "message:*suspicious*"}},
+                {"query_string": {"query": "message:*intrusion*"}},
+                {"query_string": {"query": "message:*breach*"}},
+                {"query_string": {"query": "message:*exploit*"}},
+                {"query_string": {"query": "message:*malware*"}}
+              ]
+            }
+          }
+        },
+        "actions": [
+          {
+            "id": "email-action",
+            "group": "threshold met",
+            "params": {
+              "to": ["security@cybersecurity.local", "admin@cybersecurity.local"],
+              "subject": "SECURITY ALERT: Threat Detected - {{context.date}}",
+              "message": "SECURITY ALERT: Potential threat detected!\n\nThreat Count: {{context.value}}\nDetection Time: {{context.date}}\nThreshold: {{context.threshold}}\n\nRecommended Actions:\n1. Review threat detection logs\n2. Analyze behavioral patterns\n3. Check for false positives\n4. Implement containment if verified\n5. Update threat intelligence\n\nImmediate review required."
+            }
+          }
+        ],
+        "tags": ["cybersecurity", "security", "threat-detection"],
+        "throttle": "1m"
+      }
+    },
+    {
+      "id": "behavioral-anomaly-alert",
+      "type": "alert",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "name": "Behavioral Anomaly Detection",
+        "consumer": "alerts",
+        "enabled": true,
+        "alertTypeId": ".index-threshold",
+        "schedule": {
+          "interval": "1m"
+        },
+        "params": {
+          "index": ["cybersecurity-system-*"],
+          "timeField": "@timestamp",
+          "aggType": "count",
+          "thresholdComparator": ">=",
+          "threshold": [5],
+          "timeWindowSize": 5,
+          "timeWindowUnit": "m",
+          "filterQuery": {
+            "bool": {
+              "should": [
+                {"match": {"container.labels.com_docker_compose_service": "behavioral_analysis"}},
+                {"query_string": {"query": "message:*anomaly*"}},
+                {"query_string": {"query": "message:*behavioral*"}},
+                {"query_string": {"query": "message:*pattern*"}},
+                {"query_string": {"query": "message:*deviation*"}},
+                {"query_string": {"query": "message:*unusual*"}}
+              ]
+            }
+          }
+        },
+        "actions": [
+          {
+            "id": "email-action",
+            "group": "threshold met",
+            "params": {
+              "to": ["analyst@cybersecurity.local"],
+              "subject": "Behavioral Anomaly Alert - {{context.date}}",
+              "message": "Behavioral anomaly detected in the system:\n\nAnomaly Count: {{context.value}}\nTime Period: Last 5 minutes\nDetection Time: {{context.date}}\n\nAnalysis Required:\n1. Review behavioral analysis logs\n2. Check for system changes\n3. Correlate with other security events\n4. Update baseline if legitimate\n\nPlease investigate and document findings."
+            }
+          }
+        ],
+        "tags": ["cybersecurity", "behavioral-analysis", "anomaly"],
+        "throttle": "5m"
+      }
+    },
+    {
+      "id": "decoy-interaction-alert",
+      "type": "alert",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "name": "Decoy System Interaction Alert",
+        "consumer": "alerts",
+        "enabled": true,
+        "alertTypeId": ".index-threshold",
+        "schedule": {
+          "interval": "30s"
+        },
+        "params": {
+          "index": ["cybersecurity-system-*"],
+          "timeField": "@timestamp",
+          "aggType": "count",
+          "thresholdComparator": ">=",
+          "threshold": [1],
+          "timeWindowSize": 1,
+          "timeWindowUnit": "m",
+          "filterQuery": {
+            "bool": {
+              "should": [
+                {"match": {"container.labels.com_docker_compose_service": "decoy_generator"}},
+                {"query_string": {"query": "message:*decoy*"}},
+                {"query_string": {"query": "message:*honeypot*"}},
+                {"query_string": {"query": "message:*trap*"}},
+                {"query_string": {"query": "message:*interaction*"}}
+              ]
+            }
+          }
+        },
+        "actions": [
+          {
+            "id": "email-action",
+            "group": "threshold met",
+            "params": {
+              "to": ["security@cybersecurity.local"],
+              "subject": "HONEYPOT ALERT: Decoy System Interaction - {{context.date}}",
+              "message": "HONEYPOT ALERT: Interaction detected with decoy systems!\n\nInteraction Count: {{context.value}}\nDetection Time: {{context.date}}\n\nThis indicates potential malicious activity as legitimate users should not interact with decoy systems.\n\nImmediate Actions Required:\n1. Analyze source IP and patterns\n2. Review traffic logs\n3. Correlate with other security events\n4. Consider blocking source if malicious\n5. Update threat intelligence\n\nHigh priority investigation required."
+            }
+          }
+        ],
+        "tags": ["cybersecurity", "honeypot", "decoy-interaction", "high-priority"],
+        "throttle": "30s"
+      }
+    }
+  ]
+}

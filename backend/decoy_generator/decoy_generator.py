@@ -35,6 +35,9 @@ class DecoyGenerator:
         self.redis_client = redis.from_url(redis_url)
         self.docker_client = docker.from_env()
         
+        # Integration with adaptive deception
+        self.adaptive_deception_url = "http://adaptive_deception:5007"
+        
         # Decoy configurations
         self.decoy_types = {
             'web_server': {
@@ -371,6 +374,101 @@ class DecoyGenerator:
         except Exception as e:
             logger.error(f"Error getting decoy statistics: {e}")
             return {}
+    
+    def get_adaptive_credentials(self, session_id: str, target_type: str = 'web_server') -> Dict:
+        """Get adaptive credentials from deception engine"""
+        try:
+            # Check Redis cache first
+            cache_key = f"adaptive_creds:{session_id}"
+            cached_creds = self.redis_client.get(cache_key)
+            
+            if cached_creds:
+                return json.loads(cached_creds)
+            
+            # Fallback to default credentials
+            return {
+                'username': 'admin',
+                'password': 'password123',
+                'believability_score': 0.5,
+                'source': 'default'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting adaptive credentials: {e}")
+            return {'username': 'admin', 'password': 'password', 'believability_score': 0.3}
+    
+    def get_adaptive_filesystem(self, session_id: str) -> Dict:
+        """Get adaptive file system from deception engine"""
+        try:
+            # Check Redis cache first
+            cache_key = f"adaptive_filesystem:{session_id}"
+            cached_filesystem = self.redis_client.get(cache_key)
+            
+            if cached_filesystem:
+                return json.loads(cached_filesystem)
+            
+            # Fallback to default filesystem
+            return {
+                'directories': ['/data', '/config', '/backup'],
+                'files': ['readme.txt', 'config.ini', 'data.csv'],
+                'hidden_files': ['.env'],
+                'source': 'default'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting adaptive filesystem: {e}")
+            return {'directories': ['/data'], 'files': ['readme.txt'], 'hidden_files': []}
+    
+    def get_adaptive_banners(self, session_id: str) -> Dict:
+        """Get adaptive protocol banners from deception engine"""
+        try:
+            # Check Redis cache first
+            cache_key = f"adaptive_banners:{session_id}"
+            cached_banners = self.redis_client.get(cache_key)
+            
+            if cached_banners:
+                return json.loads(cached_banners)
+            
+            # Fallback to default banners
+            return {
+                'ssh': {'banner': 'SSH-2.0-OpenSSH_7.4p1 Ubuntu'},
+                'http': {'server_header': 'Apache/2.4.29 (Ubuntu)'},
+                'ftp': {'banner': '220 Welcome to FTP Server'},
+                'source': 'default'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting adaptive banners: {e}")
+            return {'ssh': {'banner': 'SSH-2.0-OpenSSH'}, 'source': 'error'}
+    
+    def update_honeypot_with_adaptive_content(self, honeypot_id: str, session_id: str) -> bool:
+        """Update running honeypot with adaptive content"""
+        try:
+            # Get adaptive content
+            credentials = self.get_adaptive_credentials(session_id)
+            filesystem = self.get_adaptive_filesystem(session_id)
+            banners = self.get_adaptive_banners(session_id)
+            
+            # Store adaptive configuration for the honeypot
+            adaptive_config = {
+                'honeypot_id': honeypot_id,
+                'session_id': session_id,
+                'credentials': credentials,
+                'filesystem': filesystem,
+                'banners': banners,
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            # Store in Redis for honeypot to access
+            config_key = f"honeypot_config:{honeypot_id}"
+            self.redis_client.setex(config_key, 3600, json.dumps(adaptive_config))
+            
+            logger.info(f"Updated honeypot {honeypot_id} with adaptive content for session {session_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating honeypot with adaptive content: {e}")
+            return False
 
 # Flask API for the decoy generator
 app = Flask(__name__)
@@ -458,6 +556,49 @@ def get_decoy_types():
         'honeypot_types': list(decoy_generator.decoy_types.keys()),
         'honeytoken_types': list(decoy_generator.honeytoken_types.keys())
     })
+
+@app.route('/adaptive/credentials/<session_id>', methods=['GET'])
+def get_adaptive_credentials(session_id):
+    """Get adaptive credentials for a session"""
+    try:
+        target_type = request.args.get('target_type', 'web_server')
+        credentials = decoy_generator.get_adaptive_credentials(session_id, target_type)
+        return jsonify(credentials)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/adaptive/filesystem/<session_id>', methods=['GET'])
+def get_adaptive_filesystem(session_id):
+    """Get adaptive file system for a session"""
+    try:
+        filesystem = decoy_generator.get_adaptive_filesystem(session_id)
+        return jsonify(filesystem)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/adaptive/banners/<session_id>', methods=['GET'])
+def get_adaptive_banners(session_id):
+    """Get adaptive protocol banners for a session"""
+    try:
+        banners = decoy_generator.get_adaptive_banners(session_id)
+        return jsonify(banners)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/adaptive/update/<honeypot_id>', methods=['POST'])
+def update_honeypot_adaptive(honeypot_id):
+    """Update honeypot with adaptive content"""
+    try:
+        data = request.get_json() or {}
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({'error': 'session_id required'}), 400
+        
+        success = decoy_generator.update_honeypot_with_adaptive_content(honeypot_id, session_id)
+        return jsonify({'success': success})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5002, debug=True)

@@ -133,8 +133,24 @@ services:
       - ./evaluation:/app
       - ./data:/app/data
     ports:
-      - "5007:5007"
+      - "5008:5008"
     privileged: true # Required for red-team tools
+
+  # Adaptive Deception Engine
+  adaptive_deception:
+    build: ./backend/adaptive_deception
+    ports:
+      - "5007:5007"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MODEL_PATH=/app/models/adaptive
+    volumes:
+      - ./backend/adaptive_deception:/app
+      - ./data/models:/app/models
+    depends_on:
+      - redis
+      - behavioral_analysis
+      - decoy_generator
 
   # Database
   db:

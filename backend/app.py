@@ -2,17 +2,22 @@ from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, disconnect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import os
 import random
 import json
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, deque
 import jwt
 import requests
+import redis
 import sys
 import logging
+import time
+import threading
 
 # Add backend directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -43,10 +48,24 @@ except ImportError as e:
 app = Flask(__name__)
 CORS(app)
 
+# Register API Documentation Blueprint
+try:
+    from api_docs import api_blueprint
+    app.register_blueprint(api_blueprint)
+except ImportError:
+    pass  # API docs optional
+
 # Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///cybersecurity.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+
+# Rate limiting configuration
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["1000 per hour"]
+)
+limiter.init_app(app)
 
 # JWT configuration (used for API + future WebSocket auth)
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', app.config['SECRET_KEY'])
@@ -54,22 +73,197 @@ app.config['JWT_ALGORITHM'] = os.getenv('JWT_ALGORITHM', 'HS256')
 # Default: 1 hour access token lifetime
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', '3600'))
 
-# Socket.IO for real-time events
+# Socket.IO for real-time events with backpressure and rate limiting
 # Optional Redis message queue for horizontal scaling (TODO item 5)
 _socketio_mq_url = os.getenv('SOCKETIO_MESSAGE_QUEUE_URL')
 if _socketio_mq_url:
-    socketio = SocketIO(app, cors_allowed_origins="*", message_queue=_socketio_mq_url)
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*", 
+        message_queue=_socketio_mq_url,
+        async_mode='threading',
+        logger=True,
+        engineio_logger=False
+    )
 else:
-    socketio = SocketIO(app, cors_allowed_origins="*")
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*",
+        async_mode='threading',
+        logger=True,
+        engineio_logger=False
+    )
+
+# Backpressure and rate limiting configuration
+SOCKET_RATE_LIMIT_CONFIG = {
+    'events_per_second': int(os.getenv('SOCKET_EVENTS_PER_SECOND', '10')),
+    'max_queue_size': int(os.getenv('SOCKET_MAX_QUEUE_SIZE', '100')),
+    'client_rate_limit': int(os.getenv('SOCKET_CLIENT_RATE_LIMIT', '5'))  # events per second per client
+}
+
+# Global event queue for backpressure management
+event_queue = deque(maxlen=SOCKET_RATE_LIMIT_CONFIG['max_queue_size'])
+event_queue_lock = threading.Lock()
+
+# Per-client rate limiting tracking
+client_rate_trackers = {}
+client_trackers_lock = threading.Lock()
+
+
+class RateLimitTracker:
+    """Track rate limiting for individual clients."""
+    
+    def __init__(self, limit_per_second=5):
+        self.limit_per_second = limit_per_second
+        self.events = deque(maxlen=limit_per_second * 2)  # 2 second window
+        self.lock = threading.Lock()
+    
+    def can_emit(self):
+        """Check if client can emit based on rate limit."""
+        with self.lock:
+            now = time.time()
+            # Remove events older than 1 second
+            while self.events and self.events[0] < now - 1.0:
+                self.events.popleft()
+            
+            # Check if under rate limit
+            if len(self.events) < self.limit_per_second:
+                self.events.append(now)
+                return True
+            return False
+
+
+class EventQueue:
+    """Manages backpressure for Socket.IO event emission."""
+    
+    def __init__(self, max_size=100, max_rate=10):
+        self.max_size = max_size
+        self.max_rate = max_rate  # events per second
+        self.queue = deque(maxlen=max_size)
+        self.lock = threading.Lock()
+        self.last_emit_time = 0
+        self.emit_interval = 1.0 / max_rate
+        
+    def add_event(self, event_name, data, room=None):
+        """Add event to queue with backpressure."""
+        with self.lock:
+            if len(self.queue) >= self.max_size:
+                # Drop oldest event (backpressure)
+                dropped = self.queue.popleft()
+                try:
+                    log_warning(
+                        logger,
+                        f"Event queue full, dropped event: {dropped['event']}",
+                        event_type="system",
+                        metadata={"dropped_event": dropped['event'], "queue_size": len(self.queue)}
+                    )
+                except Exception:
+                    pass
+            
+            self.queue.append({
+                'event': event_name,
+                'data': data,
+                'room': room,
+                'timestamp': time.time()
+            })
+    
+    def process_queue(self):
+        """Process events from queue with rate limiting."""
+        while True:
+            with self.lock:
+                if not self.queue:
+                    continue
+                
+                now = time.time()
+                if now - self.last_emit_time < self.emit_interval:
+                    continue
+                    
+                event = self.queue.popleft()
+                self.last_emit_time = now
+            
+            try:
+                if event['room']:
+                    socketio.emit(event['event'], event['data'], room=event['room'])
+                else:
+                    socketio.emit(event['event'], event['data'])
+            except Exception as e:
+                try:
+                    log_error(
+                        logger,
+                        f"Failed to emit Socket.IO event: {e}",
+                        event_type="system",
+                        metadata={"event": event['event'], "error": str(e)}
+                    )
+                except Exception:
+                    pass
+            
+            time.sleep(0.01)  # Small sleep to prevent busy waiting
+
+
+# Initialize global event queue and processor
+global_event_queue = EventQueue(
+    max_size=SOCKET_RATE_LIMIT_CONFIG['max_queue_size'],
+    max_rate=SOCKET_RATE_LIMIT_CONFIG['events_per_second']
+)
+
+# Start background event processor
+def start_event_processor():
+    """Start the background event processor thread."""
+    processor_thread = threading.Thread(target=global_event_queue.process_queue, daemon=True)
+    processor_thread.start()
+    return processor_thread
+
+
+def emit_with_backpressure(event_name, data, room=None):
+    """Emit Socket.IO event with backpressure and rate limiting."""
+    global_event_queue.add_event(event_name, data, room)
+
+
+def get_or_create_rate_tracker(client_id):
+    """Get or create rate tracker for a client."""
+    with client_trackers_lock:
+        if client_id not in client_rate_trackers:
+            client_rate_trackers[client_id] = RateLimitTracker(
+                SOCKET_RATE_LIMIT_CONFIG['client_rate_limit']
+            )
+        return client_rate_trackers[client_id]
+
+
+def cleanup_old_trackers():
+    """Periodically clean up old rate trackers."""
+    while True:
+        with client_trackers_lock:
+            # Remove trackers that haven't been used in 5 minutes
+            current_time = time.time()
+            to_remove = []
+            for client_id, tracker in client_rate_trackers.items():
+                with tracker.lock:
+                    if not tracker.events or tracker.events[-1] < current_time - 300:
+                        to_remove.append(client_id)
+            
+            for client_id in to_remove:
+                del client_rate_trackers[client_id]
+        
+        time.sleep(60)  # Check every minute
+
+
+# Start background threads
+start_event_processor()
+cleanup_thread = threading.Thread(target=cleanup_old_trackers, daemon=True)
+cleanup_thread.start()
 
 
 @socketio.on('connect')
 def socket_auth_connect(auth):
     """Authenticate Socket.IO connections using the same JWT as HTTP APIs.
-
+    
+    Includes rate limiting and connection tracking for backpressure management.
     The frontend passes the token via the Socket.IO `auth` payload:
       io(API_URL, { auth: { token: '<JWT>' } })
     """
+    client_id = request.sid
+    client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
+    
     token = None
 
     # Preferred: token in `auth` payload
@@ -81,13 +275,43 @@ def socket_auth_connect(auth):
         token = request.args.get('token')
 
     if not token:
+        try:
+            log_warning(
+                logger,
+                f"Socket.IO connection rejected: no token provided",
+                event_type="security",
+                ip_address=client_ip,
+                metadata={"client_id": client_id, "reason": "no_token"}
+            )
+        except Exception:
+            pass
         return False  # Reject connection
 
     try:
         payload = _decode_auth_token(token)
     except jwt.ExpiredSignatureError:
+        try:
+            log_warning(
+                logger,
+                f"Socket.IO connection rejected: expired token",
+                event_type="security",
+                ip_address=client_ip,
+                metadata={"client_id": client_id, "reason": "expired_token"}
+            )
+        except Exception:
+            pass
         return False
     except jwt.InvalidTokenError:
+        try:
+            log_warning(
+                logger,
+                f"Socket.IO connection rejected: invalid token",
+                event_type="security",
+                ip_address=client_ip,
+                metadata={"client_id": client_id, "reason": "invalid_token"}
+            )
+        except Exception:
+            pass
         return False
 
     user_id = payload.get('sub')
@@ -98,13 +322,55 @@ def socket_auth_connect(auth):
     if not user:
         return False
 
+    # Create rate tracker for this client
+    get_or_create_rate_tracker(client_id)
+
     # Optionally attach minimal user context for this connection
     g.current_user = user
     g.current_user_id = user.id
     g.current_user_role = user.role
 
+    try:
+        log_info(
+            logger,
+            f"Socket.IO connection established",
+            event_type="system",
+            user_id=user.id,
+            ip_address=client_ip,
+            metadata={
+                "client_id": client_id, 
+                "user_email": user.email,
+                "user_role": user.role
+            }
+        )
+    except Exception:
+        pass
+
     # Connection is accepted by returning None / not returning False
     return None
+
+
+@socketio.on('disconnect')
+def socket_disconnect():
+    """Handle client disconnection and cleanup rate trackers."""
+    client_id = request.sid
+    client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
+    
+    # Clean up rate tracker for disconnected client
+    with client_trackers_lock:
+        if client_id in client_rate_trackers:
+            del client_rate_trackers[client_id]
+    
+    try:
+        log_info(
+            logger,
+            f"Socket.IO client disconnected",
+            event_type="system",
+            ip_address=client_ip,
+            metadata={"client_id": client_id}
+        )
+    except Exception:
+        pass
 
 db = SQLAlchemy(app)
 
@@ -531,6 +797,7 @@ def generate_mock_anomalies():
 
 
 @app.route('/api/auth/signup', methods=['POST'])
+@limiter.limit("5 per minute")  # Prevent spam account creation
 def signup():
     """Create a new user account and return an auth token.
 
@@ -589,6 +856,7 @@ def signup():
 
 
 @app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")  # Prevent brute force attacks
 def login():
     """Authenticate a user and return an auth token.
 
@@ -635,24 +903,26 @@ def login():
 
 @app.route('/api/dashboard/stats', methods=['GET'])
 @auth_required()
+@limiter.limit("30 per minute")
 def get_dashboard_stats():
-    """Get dashboard statistics"""
+    """Get dashboard statistics with rate limiting"""
     try:
         stats = generate_mock_stats()
-        # Emit real-time update over Socket.IO
-        socketio.emit('stats_update', stats)
+        # Emit real-time update with backpressure
+        emit_with_backpressure('stats_update', stats)
         return jsonify(stats)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/threats/recent', methods=['GET'])
 @auth_required()
+@limiter.limit("20 per minute")
 def get_recent_threats():
-    """Get recent threats"""
+    """Get recent threats with rate limiting"""
     try:
         threats = generate_mock_threats()
-        # Emit real-time update over Socket.IO
-        socketio.emit('threat_update', threats)
+        # Emit real-time update with backpressure
+        emit_with_backpressure('threat_update', threats)
         return jsonify(threats)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -660,18 +930,20 @@ def get_recent_threats():
 
 @app.route('/api/anomalies/recent', methods=['GET'])
 @auth_required()
+@limiter.limit("20 per minute")
 def get_recent_anomalies():
-    """Get recent traffic anomalies (mocked from traffic monitor)."""
+    """Get recent traffic anomalies with rate limiting."""
     try:
         anomalies = generate_mock_anomalies()
-        # Emit real-time traffic anomaly updates
-        socketio.emit('traffic_anomaly', anomalies)
+        # Emit real-time traffic anomaly updates with backpressure
+        emit_with_backpressure('traffic_anomaly', anomalies)
         return jsonify(anomalies)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/decoys/deploy', methods=['POST'])
 @auth_required(roles=['admin', 'analyst'])
+@limiter.limit("10 per minute")
 def deploy_decoy():
     """Deploy a new decoy.
 
@@ -761,8 +1033,8 @@ def deploy_decoy():
             'external': external_info,
         }
 
-        # Emit real-time decoy update
-        socketio.emit('decoy_update', payload)
+        # Emit real-time decoy update with backpressure
+        emit_with_backpressure('decoy_update', payload)
 
         log_action(
             'deploy_decoy',
@@ -839,6 +1111,7 @@ def get_threats():
 
 @app.route('/api/decoys', methods=['GET'])
 @auth_required()
+@limiter.limit("60 per minute")
 def get_decoys():
     """Get all decoys tracked by the central backend.
 
@@ -875,14 +1148,15 @@ def get_decoys():
             for d in Decoy.query.order_by(Decoy.created_at.desc()).all()
         ]
 
-        # Emit decoy list snapshot for real-time dashboards
-        socketio.emit('decoy_update', decoys)
+        # Emit decoy list snapshot for real-time dashboards with backpressure
+        emit_with_backpressure('decoy_update', decoys)
         return jsonify(decoys)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/alerts', methods=['GET'])
 @auth_required()
+@limiter.limit("30 per minute")
 def get_alerts():
     """Get all alerts"""
     try:
@@ -935,8 +1209,8 @@ def get_alerts():
             'by_status': dict(status_counts),
         }
 
-        # Emit alerts snapshot for real-time dashboards
-        socketio.emit('alert_update', alerts)
+        # Emit alerts snapshot for real-time dashboards with backpressure
+        emit_with_backpressure('alert_update', alerts)
         return jsonify(alerts)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1084,6 +1358,427 @@ def get_metrics_summary():
     }
     return jsonify(response)
 
+# ================================
+# Traffic Monitoring API Endpoints
+# ================================
+
+TRAFFIC_MONITOR_URL = os.getenv('TRAFFIC_MONITOR_URL', 'http://localhost:5003')
+
+@app.route('/api/traffic/status', methods=['GET'])
+@auth_required()
+def get_traffic_monitor_status():
+    """Get traffic monitoring status"""
+    try:
+        response = requests.get(f"{TRAFFIC_MONITOR_URL}/health", timeout=5)
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'Traffic monitor not available'}), 503
+    except requests.RequestException as e:
+        logger.error(f"Error connecting to traffic monitor: {e}")
+        return jsonify({'error': 'Traffic monitor unreachable'}), 503
+
+@app.route('/api/traffic/zeek/start', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def start_zeek_monitoring():
+    """Start Zeek network monitoring"""
+    try:
+        data = request.get_json() or {}
+        
+        # Log the action
+        log_action(
+            user_id=g.current_user_id,
+            action='start_zeek_monitoring',
+            details={'interface': data.get('interface', 'eth0'), 'log_dir': data.get('log_dir')},
+            ip_address=request.remote_addr
+        )
+        
+        response = requests.post(f"{TRAFFIC_MONITOR_URL}/start/zeek", json=data, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            # Emit real-time update
+            emit_with_backpressure(
+                'traffic_update',
+                {
+                    'type': 'zeek_started',
+                    'success': result.get('success', False),
+                    'interface': data.get('interface', 'eth0'),
+                    'timestamp': datetime.now().isoformat()
+                }
+            )
+            
+            return jsonify(result)
+        else:
+            return jsonify({'error': 'Failed to start Zeek monitoring'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error starting Zeek monitoring: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/traffic/zeek/stop', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def stop_zeek_monitoring():
+    """Stop Zeek network monitoring"""
+    try:
+        data = request.get_json() or {}
+        
+        # Log the action
+        log_action(
+            user_id=g.current_user_id,
+            action='stop_zeek_monitoring',
+            details={'interface': data.get('interface', 'eth0')},
+            ip_address=request.remote_addr
+        )
+        
+        response = requests.post(f"{TRAFFIC_MONITOR_URL}/stop/zeek", json=data, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            # Emit real-time update
+            emit_with_backpressure(
+                'traffic_update',
+                {
+                    'type': 'zeek_stopped',
+                    'success': result.get('success', False),
+                    'interface': data.get('interface', 'eth0'),
+                    'timestamp': datetime.now().isoformat()
+                }
+            )
+            
+            return jsonify(result)
+        else:
+            return jsonify({'error': 'Failed to stop Zeek monitoring'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error stopping Zeek monitoring: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/traffic/zeek/analyze', methods=['GET'])
+@auth_required()
+def analyze_zeek_logs():
+    """Analyze Zeek logs and return results"""
+    try:
+        log_dir = request.args.get('log_dir', '/app/zeek_logs')
+        
+        response = requests.get(f"{TRAFFIC_MONITOR_URL}/analyze/zeek", 
+                              params={'log_dir': log_dir}, timeout=30)
+        
+        if response.status_code == 200:
+            analysis = response.json()
+            
+            # Emit real-time update with analysis summary
+            emit_with_backpressure(
+                'traffic_analysis',
+                {
+                    'type': 'zeek_analysis_complete',
+                    'connections_count': len(analysis.get('connections', [])),
+                    'http_requests_count': len(analysis.get('http_requests', [])),
+                    'dns_queries_count': len(analysis.get('dns_queries', [])),
+                    'anomalies_count': len(analysis.get('anomalies', [])),
+                    'timestamp': datetime.now().isoformat()
+                }
+            )
+            
+            return jsonify(analysis)
+        else:
+            return jsonify({'error': 'Failed to analyze Zeek logs'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error analyzing Zeek logs: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/traffic/statistics', methods=['GET'])
+@auth_required()
+def get_traffic_statistics():
+    """Get traffic capture and analysis statistics"""
+    try:
+        response = requests.get(f"{TRAFFIC_MONITOR_URL}/statistics", timeout=10)
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'error': 'Failed to get traffic statistics'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error getting traffic statistics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/traffic/pcap/analyze', methods=['POST'])
+@auth_required(roles=['admin', 'analyst'])
+def analyze_pcap_file():
+    """Analyze a PCAP file"""
+    try:
+        data = request.get_json() or {}
+        pcap_file = data.get('pcap_file')
+        
+        if not pcap_file:
+            return jsonify({'error': 'pcap_file parameter required'}), 400
+        
+        # Log the action
+        log_action(
+            user_id=g.current_user_id,
+            action='analyze_pcap',
+            details={'pcap_file': pcap_file},
+            ip_address=request.remote_addr
+        )
+        
+        response = requests.post(f"{TRAFFIC_MONITOR_URL}/analyze/pcap", 
+                               json=data, timeout=60)
+        
+        if response.status_code == 200:
+            analysis = response.json()
+            
+            # Emit real-time update
+            emit_with_backpressure(
+                'traffic_analysis',
+                {
+                    'type': 'pcap_analysis_complete',
+                    'packets_count': len(analysis.get('packets', [])),
+                    'anomalies_count': len(analysis.get('anomalies', [])),
+                    'pcap_file': pcap_file,
+                    'timestamp': datetime.now().isoformat()
+                }
+            )
+            
+            return jsonify(analysis)
+        else:
+            return jsonify({'error': 'Failed to analyze PCAP file'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error analyzing PCAP file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/traffic/events/recent', methods=['GET'])
+@auth_required()
+def get_recent_traffic_events():
+    """Get recent traffic events from Redis"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        
+        # Get recent traffic events from Redis
+        redis_client = redis.from_url(os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
+        
+        # Scan for traffic event keys
+        traffic_keys = []
+        for key in redis_client.scan_iter(match="traffic_event:*"):
+            traffic_keys.append(key.decode() if isinstance(key, bytes) else key)
+        
+        # Sort by timestamp (newest first)
+        traffic_keys.sort(reverse=True)
+        traffic_keys = traffic_keys[:limit]
+        
+        # Get event data
+        events = []
+        for key in traffic_keys:
+            try:
+                event_data = redis_client.get(key)
+                if event_data:
+                    if isinstance(event_data, bytes):
+                        event_data = event_data.decode()
+                    events.append(json.loads(event_data))
+            except (json.JSONDecodeError, redis.RedisError):
+                continue
+        
+        return jsonify({
+            'events': events,
+            'total': len(events),
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting recent traffic events: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/traffic/anomalies', methods=['GET'])
+@auth_required()
+def get_traffic_anomalies():
+    """Get traffic anomalies from Redis"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        
+        # Get traffic anomalies from Redis
+        redis_client = redis.from_url(os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
+        
+        # Scan for anomaly keys
+        anomaly_keys = []
+        for key in redis_client.scan_iter(match="traffic_anomaly:*"):
+            anomaly_keys.append(key.decode() if isinstance(key, bytes) else key)
+        
+        # Sort by timestamp (newest first)
+        anomaly_keys.sort(reverse=True)
+        anomaly_keys = anomaly_keys[:limit]
+        
+        # Get anomaly data
+        anomalies = []
+        for key in anomaly_keys:
+            try:
+                anomaly_data = redis_client.get(key)
+                if anomaly_data:
+                    if isinstance(anomaly_data, bytes):
+                        anomaly_data = anomaly_data.decode()
+                    anomalies.append(json.loads(anomaly_data))
+            except (json.JSONDecodeError, redis.RedisError):
+                continue
+        
+        # Emit real-time update if new anomalies
+        if anomalies:
+            emit_with_backpressure(
+                'traffic_anomaly',
+                {
+                    'type': 'new_anomalies',
+                    'count': len(anomalies),
+                    'latest_anomaly': anomalies[0] if anomalies else None,
+                    'timestamp': datetime.now().isoformat()
+                }
+            )
+        
+        return jsonify({
+            'anomalies': anomalies,
+            'total': len(anomalies),
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting traffic anomalies: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/system/socket-stats', methods=['GET'])
+@auth_required(roles=['admin'])
+def get_socket_stats():
+    """Get Socket.IO backpressure and rate limiting statistics."""
+    try:
+        with client_trackers_lock:
+            active_clients = len(client_rate_trackers)
+            client_event_counts = {}
+            for client_id, tracker in client_rate_trackers.items():
+                with tracker.lock:
+                    client_event_counts[client_id] = len(tracker.events)
+        
+        with global_event_queue.lock:
+            queue_size = len(global_event_queue.queue)
+            max_queue_size = global_event_queue.max_size
+        
+        stats = {
+            'backpressure': {
+                'queue_size': queue_size,
+                'max_queue_size': max_queue_size,
+                'queue_utilization': round(queue_size / max_queue_size * 100, 2),
+                'events_per_second_limit': global_event_queue.max_rate
+            },
+            'rate_limiting': {
+                'active_clients': active_clients,
+                'client_event_counts': client_event_counts,
+                'config': SOCKET_RATE_LIMIT_CONFIG
+            },
+            'performance': {
+                'last_emit_time': global_event_queue.last_emit_time,
+                'emit_interval': global_event_queue.emit_interval
+            }
+        }
+        
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/system/socket-config', methods=['GET', 'POST'])
+@auth_required(roles=['admin'])
+def socket_config():
+    """Get or update Socket.IO rate limiting configuration."""
+    try:
+        if request.method == 'GET':
+            return jsonify({
+                'config': SOCKET_RATE_LIMIT_CONFIG,
+                'current_limits': {
+                    'queue_size': global_event_queue.max_size,
+                    'events_per_second': global_event_queue.max_rate
+                }
+            })
+        
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            
+            # Update configuration with validation
+            if 'events_per_second' in data:
+                new_rate = int(data['events_per_second'])
+                if 1 <= new_rate <= 100:
+                    SOCKET_RATE_LIMIT_CONFIG['events_per_second'] = new_rate
+                    global_event_queue.max_rate = new_rate
+                    global_event_queue.emit_interval = 1.0 / new_rate
+            
+            if 'max_queue_size' in data:
+                new_size = int(data['max_queue_size'])
+                if 10 <= new_size <= 1000:
+                    SOCKET_RATE_LIMIT_CONFIG['max_queue_size'] = new_size
+                    global_event_queue.max_size = new_size
+                    global_event_queue.queue = deque(
+                        list(global_event_queue.queue)[-new_size:],
+                        maxlen=new_size
+                    )
+            
+            if 'client_rate_limit' in data:
+                new_limit = int(data['client_rate_limit'])
+                if 1 <= new_limit <= 50:
+                    SOCKET_RATE_LIMIT_CONFIG['client_rate_limit'] = new_limit
+            
+            log_action(
+                'socket_config_update',
+                {'config': SOCKET_RATE_LIMIT_CONFIG},
+                user_id=getattr(g, 'current_user_id', None),
+                ip_address=request.remote_addr,
+            )
+            
+            return jsonify({'message': 'Configuration updated', 'config': SOCKET_RATE_LIMIT_CONFIG})
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/system/health', methods=['GET'])
+@limiter.limit("60 per minute")
+def health_check():
+    """System health check including backpressure status."""
+    try:
+        # Basic health indicators
+        health = {
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '1.0.0',
+            'services': {
+                'database': 'healthy',
+                'socketio': 'healthy'
+            }
+        }
+        
+        # Check queue health
+        with global_event_queue.lock:
+            queue_utilization = len(global_event_queue.queue) / global_event_queue.max_size
+            if queue_utilization > 0.9:
+                health['status'] = 'degraded'
+                health['services']['socketio'] = 'overloaded'
+            elif queue_utilization > 0.7:
+                health['status'] = 'warning'
+                health['services']['socketio'] = 'high_load'
+        
+        # Check database
+        try:
+            db.session.execute('SELECT 1')
+        except Exception:
+            health['status'] = 'unhealthy'
+            health['services']['database'] = 'unhealthy'
+        
+        return jsonify(health)
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 
 @app.route('/api/attribution/report', methods=['GET'])
 @auth_required()
@@ -1120,13 +1815,24 @@ def get_attribution_report():
 
 
 @app.route('/api/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
+@limiter.limit("5 per minute")  # Very low limit for testing
+def basic_health_check():
+    """Basic health check endpoint with rate limiting"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'version': '1.0.0',
         'enrichment_available': ENRICHMENT_AVAILABLE
+    })
+
+@app.route('/api/test/rate-limit', methods=['GET'])
+@limiter.limit("3 per minute")  # Very aggressive limit for testing
+def test_rate_limiting():
+    """Test endpoint specifically for rate limiting"""
+    return jsonify({
+        'message': 'Rate limit test successful',
+        'timestamp': datetime.now().isoformat(),
+        'limit_info': 'This endpoint allows only 3 requests per minute'
     })
 
 @app.route('/api/auth/test-token', methods=['GET', 'POST'])
@@ -1350,4 +2056,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     # Use Socket.IO server for real-time capabilities
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False)

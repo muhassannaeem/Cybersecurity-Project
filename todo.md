@@ -12,7 +12,7 @@ This file lists the **remaining** work needed to fully satisfy the system requir
    - Decoy / honeypot events (from `decoy_generator`).
    - Traffic anomalies (from `traffic_monitor`).
 3. Add a Socket.io client layer in the Next.js frontend and wire the dashboard to live‑update threat tables and KPIs without page refresh. **(DONE)**
-4. Implement backpressure and rate‑limiting on the real‑time channel so that high event volume cannot overwhelm the frontend or backend.
+4. Implement backpressure and rate‑limiting on the real‑time channel so that high event volume cannot overwhelm the frontend or backend. **(DONE)**
 5. Make the WebSocket layer horizontally scalable (e.g., Redis adapter for Socket.io) so multiple backend instances can broadcast events consistently. **(DONE – optional Redis message queue via SOCKETIO_MESSAGE_QUEUE_URL)**
 
 ---
@@ -33,13 +33,13 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 
 ## 3. ML‑Based Adaptive Honeypot Behavior
 
-9. Design an adaptive deception pipeline where honeypot responses depend on attacker behavior, not only static Docker images.
-10. Connect decoy/honeypot telemetry (from `decoy_generator` and `traffic_monitor`) to the behavioral analysis engine so that attacker action sequences can be modeled (e.g., with LSTM).
-11. Implement LSTM‑based or similar sequence models that generate believable adaptive content, such as:
+9. Design an adaptive deception pipeline where honeypot responses depend on attacker behavior, not only static Docker images. **(DONE)**
+10. Connect decoy/honeypot telemetry (from `decoy_generator` and `traffic_monitor`) to the behavioral analysis engine so that attacker action sequences can be modeled (e.g., with LSTM). **(DONE)**
+11. Implement LSTM‑based or similar sequence models that generate believable adaptive content, such as: **(DONE)**
     - Dynamic fake credentials.
     - Evolving directory structures / files exposed to attackers.
     - Protocol banners and responses that adapt to previous attacker actions.
-12. Extend the `decoy_generator` service with APIs and runtime logic to:
+12. Extend the `decoy_generator` service with APIs and runtime logic to: **(DONE)**
     - Request adaptive responses from the ML models.
     - Update live honeypot configuration based on model output.
     - Log and expose adaptive behavior decisions for audit and evaluation.
@@ -146,6 +146,6 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 
 ## 12. Secure API (Flask/FastAPI) & Rate Limiting
 
-49. Review and harden all backend APIs (Flask services) to ensure they enforce authentication, authorization, and input validation.
-50. Add rate limiting for public and sensitive endpoints to prevent abuse and protect backend resources.
-51. Document the API surface (OpenAPI/Swagger or similar) so that external systems and developers can integrate safely and consistently.
+49. Review and harden all backend APIs (Flask services) to ensure they enforce authentication, authorization, and input validation. **(DONE)**
+50. Add rate limiting for public and sensitive endpoints to prevent abuse and protect backend resources. **(DONE)**
+51. Document the API surface (OpenAPI/Swagger or similar) so that external systems and developers can integrate safely and consistently. **(DONE)**

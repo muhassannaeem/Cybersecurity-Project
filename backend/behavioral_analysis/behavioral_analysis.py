@@ -41,6 +41,9 @@ class BehavioralAnalysisEngine:
         self.redis_client = redis.from_url(redis_url)
         self.scaler = StandardScaler()
         
+        # Integration with adaptive deception
+        self.adaptive_deception_url = "http://adaptive_deception:5007"
+        
         # Initialize models
         self.lstm_model = None
         self.isolation_forest = None
@@ -329,6 +332,9 @@ class BehavioralAnalysisEngine:
                 results['recommendations'].append("Investigate detected anomalies immediately")
                 results['recommendations'].append("Review network traffic patterns")
                 results['recommendations'].append("Check for potential security breaches")
+                
+                # Trigger adaptive deception based on anomaly detection
+                self._trigger_adaptive_deception(results)
             
             # Store results in Redis
             self._store_results(results)
@@ -348,12 +354,47 @@ class BehavioralAnalysisEngine:
         except Exception as e:
             logger.error(f"Error storing results in Redis: {e}")
     
+    def _trigger_adaptive_deception(self, anomaly_results: Dict):
+        """Trigger adaptive deception based on anomaly detection"""
+        try:
+            # Create event data for adaptive deception engine
+            event_data = {
+                'session_id': f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                'action': 'anomaly_detected',
+                'target': 'network_traffic',
+                'success': True,
+                'timestamp': datetime.now().isoformat(),
+                'anomaly_score': float(anomaly_results['anomalies_detected']) / float(anomaly_results['data_points']),
+                'confidence_scores': anomaly_results['confidence_scores'],
+                'model_predictions': anomaly_results['model_predictions']
+            }
+            
+            # Send to adaptive deception engine
+            try:
+                response = requests.post(
+                    f"{self.adaptive_deception_url}/process_event",
+                    json=event_data,
+                    timeout=5
+                )
+                
+                if response.status_code == 200:
+                    logger.info("Successfully triggered adaptive deception")
+                else:
+                    logger.warning(f"Adaptive deception responded with status {response.status_code}")
+                    
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Could not reach adaptive deception service: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error triggering adaptive deception: {e}")
+    
     def get_model_status(self) -> Dict:
         """Get status of all models"""
         return {
             'lstm_model': self.lstm_model is not None,
             'isolation_forest': self.isolation_forest is not None,
             'autoencoder': self.autoencoder is not None,
+            'adaptive_deception_enabled': True,
             'model_path': self.model_path,
             'last_updated': datetime.now().isoformat()
         }

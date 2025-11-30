@@ -206,11 +206,101 @@ This file tracks the TODO items from `todo.md` that have been implemented in the
   - Routes logs to appropriate Elasticsearch indices (`cybersecurity-system-*`)
   - Enriches logs with metadata for analysis
 
-**Evidence:** 
+- **Evidence:** 
 - Elasticsearch contains active indices: `cybersecurity-system-2025.11.18` (603 docs) and `cybersecurity-system-2025.11.29` (169,721+ docs)
 - Filebeat shows successful event processing: `"events":{"acked":18432,"active":4096}`
 - Logstash pipeline is operational and processing logs in real-time
 - Kibana accessible at http://localhost:5601 with data views ready for visualization
+
+---
+
+## 10. Real‑Time Data & WebSockets – Item 4
+
+**Task 4:** Implement backpressure and rate‑limiting on the real‑time channel so that high event volume cannot overwhelm the frontend or backend.
+
+**Status:** Implemented (production-ready rate limiting and backpressure system).
+
+**How:**
+- **Flask-Limiter Integration:** Added comprehensive rate limiting using Flask-Limiter with memory-based storage fallback. Configured different limits per endpoint type (health: 5/min, login: 20/min, system APIs: 30-60/min).
+- **Socket.IO Rate Tracking:** Implemented `RateLimitTracker` class that maintains per-client rate tracking with configurable limits and time windows. Tracks emission rates for each connected Socket.IO client.
+- **Backpressure Management:** Created `EventQueue` class with fixed-size deques that automatically drop oldest events when queues are full, preventing memory overflow during high-volume scenarios.
+- **Emit with Backpressure:** Developed `emit_with_backpressure()` function that replaces all `socketio.emit()` calls. This function:
+  - Checks per-client rate limits before emission
+  - Queues events when clients are overwhelmed
+  - Drops oldest events when queues reach capacity
+  - Provides graceful degradation under load
+- **Background Processing:** Added threading-based background processor that handles queued events and client cleanup, ensuring the system remains responsive.
+- **Monitoring Endpoints:** Created `/api/system/socket-stats` and `/api/system/socket-config` endpoints to monitor real-time connection statistics, queue sizes, rate limiting status, and system configuration.
+- **Dependencies:** Added Flask-Limiter==3.5.0, eventlet==0.33.3, and related packages to support the rate limiting infrastructure.
+
+**Testing Results:** Rate limiting successfully tested and confirmed working:
+- Health endpoint properly limits to 5 requests/minute with HTTP 429 responses
+- Login endpoint enforces 20 requests/minute limit
+- Custom test endpoint (`/api/test/rate-limit`) enforces 3 requests/minute limit
+- All rate limits return appropriate "Too Many Requests" responses when exceeded
+
+---
+
+## 11. Secure API (Flask/FastAPI) & Rate Limiting - Items 49-51
+
+**Tasks:**
+- 49: Review and harden all backend APIs (Flask services) to ensure they enforce authentication, authorization, and input validation.
+- 50: Add rate limiting for public and sensitive endpoints to prevent abuse and protect backend resources.
+- 51: Document the API surface (OpenAPI/Swagger or similar) so that external systems and developers can integrate safely and consistently.
+
+**Status:** Implemented (production-ready security and documentation).
+
+**How:**
+
+- **API Security Hardening (Task 49):**
+  - **Main Backend:** Enhanced all endpoints with JWT authentication using `@auth_required()` decorator. Role-based access control enforces admin/analyst permissions on sensitive operations.
+  - **Traffic Monitor Service:** Added comprehensive authentication system with JWT validation middleware. Created `auth_required` decorator that validates Bearer tokens for all protected endpoints.
+  - **Input Validation:** Implemented Marshmallow schemas for request validation (`ZeekStartSchema`, `TcpdumpStartSchema`) with field validation and sanitization.
+  - **Path Traversal Protection:** Added `os.path.normpath()` and `..` detection to prevent directory traversal attacks on file path parameters.
+  - **Secure Error Handling:** Standardized error responses with structured logging, ensuring no sensitive information leaks in error messages.
+  - **File Upload Security:** Added `secure_filename()` validation and file type restrictions for PCAP analysis endpoints.
+
+- **Comprehensive Rate Limiting (Task 50):**
+  - **Main Backend:** Configured Flask-Limiter with 1000 requests/hour default. Added specific limits:
+    - Auth endpoints: signup (5/min), login (10/min) to prevent brute force
+    - Sensitive operations: 20-60/min based on resource intensity
+    - Health checks: Higher limits for monitoring
+  - **Traffic Monitor Service:** Implemented independent rate limiting (200 requests/hour default) with endpoint-specific limits:
+    - Control operations (start/stop): 10/minute
+    - Analysis operations: 30/minute (Zeek), 10/minute (PCAP uploads)  
+    - Statistics: 60/minute for frequent monitoring
+  - **Storage Backend:** Uses in-memory storage for development, with Redis recommended for production scaling.
+
+- **Complete API Documentation (Task 51):**
+  - **OpenAPI/Swagger Integration:** Added Flask-RESTX with comprehensive documentation at `/api/docs/swagger/`
+  - **Main Backend Documentation:** Complete coverage of all 30+ endpoints organized by namespace:
+    - Auth, Dashboard, Threats, Decoys, Traffic, System, Metrics, Analysis, Events, SIEM, Attribution, Health, Test, Alerts, Anomalies
+  - **Traffic Monitor Documentation:** Separate Swagger docs at `/docs/swagger/` with detailed traffic monitoring API coverage
+  - **Schema Definitions:** Detailed request/response models with field validation, examples, and authentication requirements
+  - **Security Documentation:** JWT Bearer token authentication scheme clearly documented with examples
+  - **Error Responses:** Standardized error schemas with HTTP status codes and descriptions
+
+**Security Enhancements:**
+- JWT token validation on all protected endpoints
+- Role-based access control with admin/analyst permissions
+- Input sanitization and validation for all parameters
+- Path traversal attack prevention
+- File upload security with type validation
+- Structured audit logging for security events
+- Rate limiting to prevent abuse and DoS attacks
+
+**Dependencies Added:**
+- Flask-RESTX==1.3.0 for API documentation
+- PyJWT==2.8.0 for JWT token handling
+- Marshmallow==3.20.1 for input validation
+- Flask-Limiter==3.5.0 for rate limiting
+
+**Evidence:**
+- Swagger documentation accessible at http://localhost:5000/api/docs/swagger/
+- All endpoints require authentication and show proper security schemas
+- Rate limiting successfully tested and enforced
+- Input validation prevents malformed requests
+- Comprehensive error handling with security logging
 
 ---
 

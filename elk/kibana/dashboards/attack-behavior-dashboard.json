@@ -1,0 +1,140 @@
+{
+  "version": "8.11.0",
+  "objects": [
+    {
+      "id": "attack-behavior-dashboard",
+      "type": "dashboard",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "title": "Attack Behavior Analysis",
+        "hits": 0,
+        "description": "Deep analysis of attack behaviors, patterns, and attribution",
+        "panelsJSON": "[{\"version\":\"8.11.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"1\"},\"panelIndex\":\"1\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_1\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":24,\"y\":0,\"w\":24,\"h\":15,\"i\":\"2\"},\"panelIndex\":\"2\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_2\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":0,\"y\":15,\"w\":24,\"h\":15,\"i\":\"3\"},\"panelIndex\":\"3\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_3\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":24,\"y\":15,\"w\":24,\"h\":15,\"i\":\"4\"},\"panelIndex\":\"4\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_4\"},{\"version\":\"8.11.0\",\"gridData\":{\"x\":0,\"y\":30,\"w\":48,\"h\":20,\"i\":\"5\"},\"panelIndex\":\"5\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_5\"}]",
+        "timeRestore": false,
+        "timeTo": "now",
+        "timeFrom": "now-4h",
+        "refreshInterval": {
+          "pause": false,
+          "value": 60000
+        },
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"query\":{\"match_all\":{}},\"filter\":[]}"
+        }
+      },
+      "references": [
+        {
+          "name": "panel_1",
+          "type": "visualization",
+          "id": "behavioral-metrics-viz"
+        },
+        {
+          "name": "panel_2",
+          "type": "visualization",
+          "id": "threat-attribution-viz"
+        },
+        {
+          "name": "panel_3",
+          "type": "visualization",
+          "id": "decoy-interactions-viz"
+        },
+        {
+          "name": "panel_4",
+          "type": "visualization",
+          "id": "traffic-analysis-viz"
+        },
+        {
+          "name": "panel_5",
+          "type": "visualization",
+          "id": "attack-behavior-logs-viz"
+        }
+      ]
+    },
+    {
+      "id": "behavioral-metrics-viz",
+      "type": "visualization",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "title": "Behavioral Analysis Metrics",
+        "visState": "{\"title\":\"Behavioral Analysis Metrics\",\"type\":\"area\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"min_doc_count\":1}}]}",
+        "uiStateJSON": "{}",
+        "description": "Behavioral analysis processing activity over time",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"cybersecurity-system-*\",\"query\":{\"bool\":{\"should\":[{\"match\":{\"container.labels.com_docker_compose_service\":\"behavioral_analysis\"}},{\"query_string\":{\"query\":\"message:*behavioral*\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "threat-attribution-viz",
+      "type": "visualization",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "title": "Threat Attribution Analysis",
+        "visState": "{\"title\":\"Threat Attribution Analysis\",\"type\":\"horizontal_bar\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"host.ip.keyword\",\"size\":10,\"order\":\"desc\",\"orderBy\":\"1\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "Threat attribution by source IP and patterns",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"cybersecurity-system-*\",\"query\":{\"bool\":{\"should\":[{\"match\":{\"container.labels.com_docker_compose_service\":\"threat_attribution\"}},{\"query_string\":{\"query\":\"message:*attribution*\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "decoy-interactions-viz",
+      "type": "visualization",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "title": "Decoy System Interactions",
+        "visState": "{\"title\":\"Decoy System Interactions\",\"type\":\"line\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"interval\":\"auto\",\"min_doc_count\":1}}]}",
+        "uiStateJSON": "{}",
+        "description": "Decoy system interaction patterns and honeypot activity",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"cybersecurity-system-*\",\"query\":{\"bool\":{\"should\":[{\"match\":{\"container.labels.com_docker_compose_service\":\"decoy_generator\"}},{\"query_string\":{\"query\":\"message:*decoy*\"}},{\"query_string\":{\"query\":\"message:*honeypot*\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "traffic-analysis-viz",
+      "type": "visualization",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "title": "Network Traffic Analysis",
+        "visState": "{\"title\":\"Network Traffic Analysis\",\"type\":\"gauge\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"schema\":\"metric\",\"params\":{}}]}",
+        "uiStateJSON": "{}",
+        "description": "Network traffic monitoring and analysis metrics",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"cybersecurity-system-*\",\"query\":{\"bool\":{\"should\":[{\"match\":{\"container.labels.com_docker_compose_service\":\"traffic_monitor\"}},{\"query_string\":{\"query\":\"message:*traffic*\"}},{\"query_string\":{\"query\":\"message:*network*\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "attack-behavior-logs-viz",
+      "type": "search",
+      "updated_at": "2024-01-15T10:00:00.000Z",
+      "version": "WzEsMV0=",
+      "attributes": {
+        "title": "Attack Behavior Log Details",
+        "description": "Detailed log view of attack behavior analysis events",
+        "hits": 0,
+        "columns": [
+          "@timestamp",
+          "container.labels.com_docker_compose_service",
+          "message",
+          "stream"
+        ],
+        "sort": [
+          [
+            "@timestamp",
+            "desc"
+          ]
+        ],
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"cybersecurity-system-*\",\"query\":{\"bool\":{\"should\":[{\"query_string\":{\"query\":\"message:*attack*\"}},{\"query_string\":{\"query\":\"message:*behavioral*\"}},{\"query_string\":{\"query\":\"message:*threat*\"}},{\"query_string\":{\"query\":\"message:*analysis*\"}},{\"query_string\":{\"query\":\"container.labels.com_docker_compose_service:(behavioral_analysis OR threat_attribution OR decoy_generator)\"}}]}},\"filter\":[]}"
+        }
+      }
+    }
+  ]
+}
