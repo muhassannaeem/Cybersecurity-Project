@@ -1,6 +1,15 @@
+#
+- [x] Add flask-restx to requirements and install it
 # Project TODO (Remaining Requirements from System Specification)
 
-This file lists the **remaining** work needed to fully satisfy the system requirements (including the highlighted sections and the additional 5 textual requirements). Items below are **not yet implemented or only partially implemented** in the current codebase.
+**ALL MAJOR TASKS COMPLETED** ✅
+
+This file lists the requirements from the system specification. All major items have been implemented and marked as DONE.
+
+## Summary of Remaining Minor Tasks
+
+- [x] Audit Section 11 implementation - Check codebase for Zeek/tcpdump integration and traffic capture features (Section 11). **(DONE)**
+- [x] Test Section 11 code - Test traffic monitoring and Zeek/tcpdump related code for completeness and correctness. **(DONE)**
 
 ---
 
@@ -92,11 +101,11 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 
 ## 7. Scalable Real‑Time Platform & Kubernetes
 
-26. Create Kubernetes manifests (Deployments, Services, Ingress, ConfigMaps, Secrets, etc.) for all core microservices and supporting components (database, Redis, message brokers if any).
-27. Define horizontal pod autoscaling rules for critical services (backend API, WebSocket/Socket.io gateway, behavioral analysis, decoy generator) based on CPU, memory, or custom metrics.
-28. Ensure the real‑time Socket.io / WebSocket layer is compatible with multi‑pod deployments (e.g., using a Redis or message‑queue based adapter for pub/sub fan‑out).
-29. Implement backpressure strategies at the platform level (queueing limits, dropping/aggregating low‑priority events) so the system can sustain high attack volumes without failing.
-30. Provide basic deployment documentation for running the full system on Kubernetes (local cluster and production‑style cluster).
+26. Create Kubernetes manifests (Deployments, Services, Ingress, ConfigMaps, Secrets, etc.) for all core microservices and supporting components (database, Redis, message brokers if any). **(DONE)**
+27. Define horizontal pod autoscaling rules for critical services (backend API, WebSocket/Socket.io gateway, behavioral analysis, decoy generator) based on CPU, memory, or custom metrics. **(DONE)**
+28. Ensure the real‑time Socket.io / WebSocket layer is compatible with multi‑pod deployments (e.g., using a Redis or message‑queue based adapter for pub/sub fan‑out). **(DONE)**
+29. Implement backpressure strategies at the platform level (queueing limits, dropping/aggregating low‑priority events) so the system can sustain high attack volumes without failing. **(DONE)**
+30. Provide basic deployment documentation for running the full system on Kubernetes (local cluster and production‑style cluster). **(DONE)**
 
 ---
 
@@ -119,7 +128,7 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 38. Build Kibana (or equivalent) dashboards and alerts for:
     - Service health and performance.
     - Detected anomalies and attacks.
-    - Errors in threat‑intelligence sharing, attribution, and retraining pipelines.
+    - Errors in threat‑intelligence sharing, attribution, and retraining pipelines. **(DONE)**
 
 ---
 
@@ -134,14 +143,15 @@ This file lists the **remaining** work needed to fully satisfy the system requir
 
 ---
 
-## 11. Traffic Capture with Zeek/tcpdump
+
+## 11. Traffic Capture with Zeek/tcpdump **(DONE)**
 
 45. Integrate **Zeek** properly into the traffic monitoring service instead of the current placeholder implementation, including:
-    - Installing and configuring Zeek inside the traffic monitor environment.
-    - Managing Zeek start/stop lifecycle and log rotation.
-46. Implement real‑time parsing of Zeek logs (conn, http, dns, ssl, etc.) and enrich events with metadata required for attribution and behavioral analysis.
-47. Ensure tcpdump remains available for raw packet capture, and that captured PCAPs can be analyzed and correlated with Zeek events.
-48. Store detailed traffic logs persistently and expose summary statistics and anomalies through APIs used by dashboards and evaluation components.
+    - Installing and configuring Zeek inside the traffic monitor environment. **(DONE)**
+    - Managing Zeek start/stop lifecycle and log rotation. **(DONE)**
+46. Implement real‑time parsing of Zeek logs (conn, http, dns, ssl, etc.) and enrich events with metadata required for attribution and behavioral analysis. **(DONE)**
+47. Ensure tcpdump remains available for raw packet capture, and that captured PCAPs can be analyzed and correlated with Zeek events. **(DONE)**
+48. Store detailed traffic logs persistently and expose summary statistics and anomalies through APIs used by dashboards and evaluation components. **(DONE)**
 
 ---
 

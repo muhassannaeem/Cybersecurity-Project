@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: visualization-dashboard
+  namespace: cybersecurity-platform
+  labels:
+    app: visualization-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: visualization-dashboard
+  template:
+    metadata:
+      labels:
+        app: visualization-dashboard
+    spec:
+      containers:
+      - name: visualization-dashboard
+        image: cybersecurity-visualization-dashboard:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5005
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        - name: FLASK_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: FLASK_ENV
+        volumeMounts:
+        - name: logs-storage
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5005
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5005
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: visualization-dashboard
+  namespace: cybersecurity-platform
+  labels:
+    app: visualization-dashboard
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5005
+    targetPort: 5005
+    protocol: TCP
+    name: http
+  selector:
+    app: visualization-dashboard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: threat-intelligence
+  namespace: cybersecurity-platform
+  labels:
+    app: threat-intelligence
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: threat-intelligence
+  template:
+    metadata:
+      labels:
+        app: threat-intelligence
+    spec:
+      containers:
+      - name: threat-intelligence
+        image: cybersecurity-threat-intelligence:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5006
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        volumeMounts:
+        - name: logs-storage
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: threat-intelligence
+  namespace: cybersecurity-platform
+  labels:
+    app: threat-intelligence
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5006
+    targetPort: 5006
+    protocol: TCP
+    name: http
+  selector:
+    app: threat-intelligence

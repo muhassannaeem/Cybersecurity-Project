@@ -1,0 +1,43 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+  namespace: cybersecurity-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: cybersecurity-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: behavioral-analysis-pdb
+  namespace: cybersecurity-platform
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: behavioral-analysis
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: elasticsearch-pdb
+  namespace: cybersecurity-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: elasticsearch

@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adaptive-deception
+  namespace: cybersecurity-platform
+  labels:
+    app: adaptive-deception
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adaptive-deception
+  template:
+    metadata:
+      labels:
+        app: adaptive-deception
+    spec:
+      containers:
+      - name: adaptive-deception
+        image: cybersecurity-adaptive-deception:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5007
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        - name: MODEL_PATH
+          value: "/app/models/adaptive"
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        - name: logs-storage
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5007
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5007
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: models-pvc
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adaptive-deception
+  namespace: cybersecurity-platform
+  labels:
+    app: adaptive-deception
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5007
+    targetPort: 5007
+    protocol: TCP
+    name: http
+  selector:
+    app: adaptive-deception
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evaluation-engine
+  namespace: cybersecurity-platform
+  labels:
+    app: evaluation-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: evaluation-engine
+  template:
+    metadata:
+      labels:
+        app: evaluation-engine
+    spec:
+      containers:
+      - name: evaluation-engine
+        image: cybersecurity-evaluation-engine:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5008
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        volumeMounts:
+        - name: logs-storage
+          mountPath: /app/logs
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5008
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5008
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: evaluation-engine
+  namespace: cybersecurity-platform
+  labels:
+    app: evaluation-engine
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5008
+    targetPort: 5008
+    protocol: TCP
+    name: http
+  selector:
+    app: evaluation-engine

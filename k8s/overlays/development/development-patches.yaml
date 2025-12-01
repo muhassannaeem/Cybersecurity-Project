@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cybersecurity-config
+  namespace: cybersecurity-platform
+data:
+  FLASK_ENV: "development"
+  LOG_LEVEL: "DEBUG"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: cybersecurity-platform
+spec:
+  template:
+    spec:
+      containers:
+      - name: backend
+        env:
+        - name: FLASK_ENV
+          value: "development"
+        - name: LOG_LEVEL
+          value: "DEBUG"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"

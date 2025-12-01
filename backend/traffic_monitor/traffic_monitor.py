@@ -14,7 +14,9 @@ import redis
 import requests
 import jwt
 from marshmallow import Schema, fields, ValidationError
-from werkzeug.utils import secure_filename\nfrom flask_limiter import Limiter\nfrom flask_limiter.util import get_remote_address
+from werkzeug.utils import secure_filename
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 # import pandas as pd  # Commented out to avoid dependency issues
 # import numpy as np   # Commented out to avoid dependency issues  
 # from scapy.all import sniff, IP, TCP, UDP  # Commented out to avoid dependency issues
@@ -958,12 +960,27 @@ class TrafficMonitor:
         except Exception as e:
             logger.error(f"Error storing analysis results: {e}")
 
+
 # Flask API for the traffic monitor
-app = Flask(__name__)\n\n# Register API Documentation\ntry:\n    from traffic_api_docs import traffic_api_blueprint\n    app.register_blueprint(traffic_api_blueprint)\nexcept ImportError:\n    pass  # API docs optional
+app = Flask(__name__)
+
+# Register API Documentation
+try:
+    from traffic_api_docs import traffic_api_blueprint
+    app.register_blueprint(traffic_api_blueprint)
+except ImportError:
+    pass  # API docs optional
 
 # JWT Configuration for authentication
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['JWT_ALGORITHM'] = os.getenv('JWT_ALGORITHM', 'HS256')\n\n# Rate limiting configuration\nlimiter = Limiter(\n    key_func=get_remote_address,\n    default_limits=[\"200 per hour\"]\n)\nlimiter.init_app(app)
+app.config['JWT_ALGORITHM'] = os.getenv('JWT_ALGORITHM', 'HS256')
+
+# Rate limiting configuration
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per hour"]
+)
+limiter.init_app(app)
 
 def auth_required(f):
     """Decorator to require JWT authentication for traffic monitor endpoints"""

@@ -1,0 +1,167 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-monitor
+  namespace: cybersecurity-platform
+  labels:
+    app: traffic-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-monitor
+  template:
+    metadata:
+      labels:
+        app: traffic-monitor
+    spec:
+      containers:
+      - name: traffic-monitor
+        image: cybersecurity-traffic-monitor:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5003
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        - name: ZEEK_LOG_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: ZEEK_LOG_PATH
+        - name: TCPDUMP_INTERFACE
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: TCPDUMP_INTERFACE
+        volumeMounts:
+        - name: logs-storage
+          mountPath: /app/logs
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+              - NET_RAW
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5003
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traffic-monitor
+  namespace: cybersecurity-platform
+  labels:
+    app: traffic-monitor
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5003
+    targetPort: 5003
+    protocol: TCP
+    name: http
+  selector:
+    app: traffic-monitor
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: threat-attribution
+  namespace: cybersecurity-platform
+  labels:
+    app: threat-attribution
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: threat-attribution
+  template:
+    metadata:
+      labels:
+        app: threat-attribution
+    spec:
+      containers:
+      - name: threat-attribution
+        image: cybersecurity-threat-attribution:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5004
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        - name: MITRE_ATTACK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: MITRE_ATTACK_URL
+        volumeMounts:
+        - name: logs-storage
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5004
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5004
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: threat-attribution
+  namespace: cybersecurity-platform
+  labels:
+    app: threat-attribution
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5004
+    targetPort: 5004
+    protocol: TCP
+    name: http
+  selector:
+    app: threat-attribution

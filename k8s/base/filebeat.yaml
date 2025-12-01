@@ -1,0 +1,172 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: cybersecurity-platform
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: container
+      paths:
+        - /var/log/containers/*cybersecurity-platform*.log
+        - /var/log/containers/*backend*.log
+        - /var/log/containers/*traffic-monitor*.log
+        - /var/log/containers/*threat-*.log
+        - /var/log/containers/*decoy-*.log
+        - /var/log/containers/*behavioral-*.log
+        - /var/log/containers/*adaptive-*.log
+        - /var/log/containers/*evaluation-*.log
+        - /var/log/containers/*visualization-*.log
+      processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+      - decode_json_fields:
+          fields: ["message"]
+          target: ""
+          overwrite_keys: true
+
+    - type: log
+      paths:
+        - /app/logs/*.log
+        - /var/log/cybersecurity/*.log
+      fields:
+        logtype: cybersecurity
+      fields_under_root: true
+
+    output.logstash:
+      hosts: ["logstash:5044"]
+
+    logging.level: info
+    logging.to_files: false
+    logging.to_stderr: true
+
+    processors:
+    - add_kubernetes_metadata:
+        host: ${NODE_NAME}
+        matchers:
+        - logs_path:
+            logs_path: "/var/log/containers/"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: cybersecurity-platform
+  labels:
+    app: filebeat
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:8.11.0
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlogcontainers
+          mountPath: /var/log/containers
+          readOnly: true
+        - name: varlogpods
+          mountPath: /var/log/pods
+          readOnly: true
+        - name: logs-volume
+          mountPath: /app/logs
+          readOnly: true
+        - name: cybersecurity-logs
+          mountPath: /var/log/cybersecurity
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0640
+          name: filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlogcontainers
+        hostPath:
+          path: /var/log/containers
+      - name: varlogpods
+        hostPath:
+          path: /var/log/pods
+      - name: data
+        hostPath:
+          path: /var/lib/filebeat-data
+          type: DirectoryOrCreate
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: logs-pvc
+      - name: cybersecurity-logs
+        hostPath:
+          path: /var/log/cybersecurity
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: cybersecurity-platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - namespaces
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+  namespace: cybersecurity-platform
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io

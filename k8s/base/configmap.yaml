@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cybersecurity-config
+  namespace: cybersecurity-platform
+data:
+  # Database configuration
+  POSTGRES_DB: "cybersecurity"
+  POSTGRES_USER: "postgres"
+  
+  # Redis configuration
+  REDIS_URL: "redis://redis:6379"
+  
+  # Flask configuration
+  FLASK_ENV: "production"
+  
+  # Service URLs
+  BACKEND_URL: "http://backend:5000"
+  BEHAVIORAL_ANALYSIS_URL: "http://behavioral-analysis:5001"
+  DECOY_GENERATOR_URL: "http://decoy-generator:5002"
+  TRAFFIC_MONITOR_URL: "http://traffic-monitor:5003"
+  THREAT_ATTRIBUTION_URL: "http://threat-attribution:5004"
+  VISUALIZATION_DASHBOARD_URL: "http://visualization-dashboard:5005"
+  THREAT_INTELLIGENCE_URL: "http://threat-intelligence:5006"
+  ADAPTIVE_DECEPTION_URL: "http://adaptive-deception:5007"
+  EVALUATION_ENGINE_URL: "http://evaluation-engine:5008"
+  
+  # ELK Stack URLs
+  ELASTICSEARCH_URL: "http://elasticsearch:9200"
+  KIBANA_URL: "http://kibana:5601"
+  LOGSTASH_URL: "http://logstash:5044"
+  
+  # ML Model paths
+  MODEL_PATH: "/app/models"
+  TRAINING_DATA_PATH: "/app/data/training"
+  
+  # Zeek/Traffic monitoring
+  ZEEK_LOG_PATH: "/app/logs"
+  TCPDUMP_INTERFACE: "eth0"
+  
+  # MITRE ATT&CK
+  MITRE_ATTACK_URL: "https://attack.mitre.org/api/"
+  
+  # Socket.IO configuration
+  SOCKETIO_MESSAGE_QUEUE_URL: "redis://redis:6379/1"
+  
+  # JWT configuration
+  JWT_ALGORITHM: "HS256"
+  JWT_ACCESS_TOKEN_EXPIRES: "3600"
+  
+  # Rate limiting
+  RATELIMIT_STORAGE_URI: "redis://redis:6379/2"

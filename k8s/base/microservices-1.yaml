@@ -1,0 +1,204 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: behavioral-analysis
+  namespace: cybersecurity-platform
+  labels:
+    app: behavioral-analysis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: behavioral-analysis
+  template:
+    metadata:
+      labels:
+        app: behavioral-analysis
+    spec:
+      containers:
+      - name: behavioral-analysis
+        image: cybersecurity-behavioral-analysis:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5001
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        - name: MODEL_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: MODEL_PATH
+        - name: TRAINING_DATA_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: TRAINING_DATA_PATH
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        - name: logs-storage
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: models-pvc
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: behavioral-analysis
+  namespace: cybersecurity-platform
+  labels:
+    app: behavioral-analysis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5001
+    targetPort: 5001
+    protocol: TCP
+    name: http
+  selector:
+    app: behavioral-analysis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decoy-generator
+  namespace: cybersecurity-platform
+  labels:
+    app: decoy-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: decoy-generator
+  template:
+    metadata:
+      labels:
+        app: decoy-generator
+    spec:
+      serviceAccountName: decoy-generator
+      containers:
+      - name: decoy-generator
+        image: cybersecurity-decoy-generator:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5002
+          name: http
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        - name: DOCKER_HOST
+          value: "unix:///var/run/docker.sock"
+        volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+        - name: logs-storage
+          mountPath: /app/logs
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5002
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: decoy-generator
+  namespace: cybersecurity-platform
+  labels:
+    app: decoy-generator
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5002
+    targetPort: 5002
+    protocol: TCP
+    name: http
+  selector:
+    app: decoy-generator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: decoy-generator
+  namespace: cybersecurity-platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: decoy-generator
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: decoy-generator
+subjects:
+- kind: ServiceAccount
+  name: decoy-generator
+  namespace: cybersecurity-platform
+roleRef:
+  kind: ClusterRole
+  name: decoy-generator
+  apiGroup: rbac.authorization.k8s.io

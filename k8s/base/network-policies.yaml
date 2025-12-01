@@ -1,0 +1,93 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cybersecurity-network-policy
+  namespace: cybersecurity-platform
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow all pods within the namespace to communicate
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: cybersecurity-platform
+  # Allow ingress from nginx controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: nginx-ingress
+  # Allow external DNS and internet access
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  # Allow internal cluster communication
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: cybersecurity-platform
+  # Allow external API calls (MITRE ATT&CK, etc.)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database-network-policy
+  namespace: cybersecurity-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: postgresql
+  policyTypes:
+  - Ingress
+  ingress:
+  # Only allow backend services to connect to database
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend
+    - podSelector:
+        matchLabels:
+          app: behavioral-analysis
+    - podSelector:
+        matchLabels:
+          app: threat-attribution
+    - podSelector:
+        matchLabels:
+          app: adaptive-deception
+    - podSelector:
+        matchLabels:
+          app: evaluation-engine
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-network-policy
+  namespace: cybersecurity-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow all services to connect to Redis for caching and messaging
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 6379

@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: cybersecurity-platform
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: cybersecurity-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: cybersecurity-secrets
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: REDIS_URL
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cybersecurity-secrets
+              key: JWT_SECRET_KEY
+        - name: JWT_ALGORITHM
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: JWT_ALGORITHM
+        - name: SOCKETIO_MESSAGE_QUEUE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: SOCKETIO_MESSAGE_QUEUE_URL
+        - name: FLASK_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: FLASK_ENV
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        - name: logs-storage
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: models-pvc
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: cybersecurity-platform
+  labels:
+    app: backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+    protocol: TCP
+    name: http
+  selector:
+    app: backend

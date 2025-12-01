@@ -1,0 +1,46 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: cybersecurity-platform-dev
+  namespace: cybersecurity-platform
+
+resources:
+- ../../base
+
+patchesStrategicMerge:
+- development-patches.yaml
+
+replicas:
+- name: backend
+  count: 1
+- name: frontend
+  count: 1
+- name: behavioral-analysis
+  count: 1
+- name: threat-attribution
+  count: 1
+- name: elasticsearch
+  count: 1
+
+images:
+- name: cybersecurity-backend
+  newTag: dev
+- name: cybersecurity-frontend
+  newTag: dev
+- name: cybersecurity-behavioral-analysis
+  newTag: dev
+- name: cybersecurity-decoy-generator
+  newTag: dev
+- name: cybersecurity-traffic-monitor
+  newTag: dev
+- name: cybersecurity-threat-attribution
+  newTag: dev
+- name: cybersecurity-visualization-dashboard
+  newTag: dev
+- name: cybersecurity-threat-intelligence
+  newTag: dev
+- name: cybersecurity-adaptive-deception
+  newTag: dev
+- name: cybersecurity-evaluation-engine
+  newTag: dev
