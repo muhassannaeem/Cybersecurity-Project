@@ -1,0 +1,31 @@
+# Simplified Persistent Volume Claims for local development
+# Using dynamic provisioning with standard storage class
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models-pvc
+  namespace: cybersecurity-platform
+  labels:
+    app: cybersecurity-platform
+spec:
+  accessModes:
+    - ReadWriteOnce  # Changed to RWO for compatibility
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logs-pvc
+  namespace: cybersecurity-platform
+  labels:
+    app: cybersecurity-platform
+spec:
+  accessModes:
+    - ReadWriteOnce  # Changed to RWO for compatibility
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 15Gi
