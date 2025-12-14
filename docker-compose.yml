@@ -8,17 +8,18 @@ services:
         - NEXT_PUBLIC_API_URL=http://backend:5000
     ports:
       - "3000:3000"
+      - "7860:3000"  # Hugging Face compatible port
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:5000
     depends_on:
       - backend
     # The 'volumes' section has been removed to prevent hiding the built code.
-
   # Backend - Python Flask
   backend:
     build: ./backend
     ports:
       - "5000:5000"
+      - "7861:5000"  # Hugging Face compatible port
     environment:
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://postgres:12345678@db:5432/cybersecurity
@@ -29,7 +30,6 @@ services:
     volumes:
       - ./backend:/app
       - ./data:/app/data
-
   # Behavioral Analysis Engine
   behavioral_analysis:
     build: ./backend/behavioral_analysis

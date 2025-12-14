@@ -1,68 +1,23 @@
-# Modular Containerized Cybersecurity System
+---
+title: Cybersecurity System
+sdk: docker
+---
 
-A comprehensive, modular cybersecurity system with behavioral analysis, decoy generation, threat attribution, and visualization capabilities.
+# Cybersecurity System
 
-## System Architecture
+This is a comprehensive cybersecurity system with behavioral analysis, decoy generation, threat attribution, and visualization capabilities.
 
-### Core Components
+## Deployment
 
-1. **Behavioral Analysis Engine** - ML models (LSTM, Isolation Forest, Autoencoder) for anomaly detection
-2. **Decoy Generator** - Python/Go engine for dynamic honeypot and honeytoken creation
-3. **Traffic Monitor** - Zeek and tcpdump integration for real-time network capture
-4. **Threat Attribution Module** - MITRE ATT&CK mapping for adversary profiling
-5. **Visualization Dashboard** - Flask-based GUI for telemetry and behavioral visualizations
-6. **Threat Intelligence Sharing** - STIX/TAXII integration for indicator sharing
+This system is designed to run as a complete package using Docker Compose. The deployment exposes:
 
-### Machine Learning Models
+- Frontend Dashboard: Port 7860 (Hugging Face compatible)
+- Backend API: Port 7861 (Hugging Face compatible)
+- All other services on their standard ports
 
-- **LSTM** - Sequence-based anomaly detection
-- **Isolation Forest** - Unsupervised anomaly detection
-- **Autoencoder** - Dimensionality reduction and anomaly detection
+## Accessing the System
 
-### Decoy Types
-
-- **Web servers** (Apache/Nginx)
-- **SSH** (Cowrie)
-- **File shares** (Samba)
-- **IoT emulators**
-- **Honeytokens** - Fake credentials, documents, API keys
-
-## Folder Structure
-
-cybersecurity-system/
-├── frontend/                 # Next.js frontend
-├── backend/                  # Python backend
-│   ├── behavioral_analysis/  # ML models
-│   ├── decoy_generator/      # Honeypot/honeytoken engine
-│   ├── traffic_monitor/      # Zeek/tcpdump integration
-│   ├── threat_attribution/   # MITRE ATT&CK mapping
-│   ├── visualization/        # Flask dashboard
-│   └── threat_intelligence/  # STIX/TAXII integration
-├── docker/                   # Container configurations
-├── evaluation/               # Red-team testing tools
-└── docs/                     # Documentation
-
-## Quick Start
-
-1. **Clone the repository**
-2. **Install dependencies**: `docker-compose up -d`
-3. **Access dashboard**: http://localhost:3000
-4. **API endpoints**: http://localhost:5000
-
-## Evaluation Metrics
-
-- Detection latency
-- False positive rate
-- Attacker engagement time
-- Decoy believability
-
-## Red-Team Tools Integration
-
-- Metasploit
-- Nmap
-- Hydra
-- SQLMap
-
-## License
-
-MIT License
+After deployment completes:
+- Frontend Dashboard: Visit the Hugging Face Space URL
+- Backend API: Access through the Space's API endpoint
+- Kibana Visualization: Port 5601 (if exposed)
