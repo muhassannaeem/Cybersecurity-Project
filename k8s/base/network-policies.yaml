@@ -13,12 +13,12 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: cybersecurity-platform
+          kubernetes.io/metadata.name: cybersecurity-platform
   # Allow ingress from nginx controller
   - from:
     - namespaceSelector:
         matchLabels:
-          name: nginx-ingress
+          kubernetes.io/metadata.name: nginx-ingress
   # Allow external DNS and internet access
   egress:
   - to: []
@@ -31,7 +31,7 @@ spec:
   - to:
     - namespaceSelector:
         matchLabels:
-          name: cybersecurity-platform
+          kubernetes.io/metadata.name: cybersecurity-platform
   # Allow external API calls (MITRE ATT&CK, etc.)
   - to: []
     ports:

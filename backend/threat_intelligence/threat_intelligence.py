@@ -293,8 +293,10 @@ class RateLimiter:
 class ImprovedSharingService:
     """Improved sharing service with retry and idempotency (Task 33)"""
     
-    def __init__(self, redis_client):
+    def __init__(self, redis_client, threat_intel_sharing=None):
+        # Accept optional reference to ThreatIntelligenceSharing for compatibility
         self.redis_client = redis_client
+        self.threat_intel_sharing = threat_intel_sharing
         self.max_retries = 3
         self.retry_delays = [5, 15, 60]  # Exponential backoff in seconds
         self.rate_limiter = RateLimiter(redis_client)
@@ -489,6 +491,7 @@ class ThreatIntelligenceSharing:
                 self.health_checker.start_health_checking(list(self.providers.values()))
             
             # Initialize improved sharing service (Task 33)
+            # Pass redis_client and reference to this ThreatIntelligenceSharing instance
             self.improved_sharing = ImprovedSharingService(self.redis_client, self)
             
             # Start background sharing thread (improved version)

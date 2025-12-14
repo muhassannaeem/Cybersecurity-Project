@@ -133,7 +133,9 @@ services:
       - ./evaluation:/app
       - ./data:/app/data
     ports:
-      - "5008:5008"
+      # Map host port 5008 (used by demo_module_tests.py and docs)
+      # to container port 5007 where the Flask app actually listens.
+      - "5008:5007"
     privileged: true # Required for red-team tools
 
   # Adaptive Deception Engine

@@ -580,8 +580,8 @@ class EvaluationMetric(db.Model):
     detected = db.Column(db.Boolean, default=False, index=True)
     target_host = db.Column(db.String(255))
     
-    # Metadata
-    metadata = db.Column(db.JSON)
+    # Additional metadata/context
+    extra_metadata = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
@@ -605,7 +605,7 @@ class DetectionEvent(db.Model):
     # Additional Context
     threat_id = db.Column(db.Integer)
     alert_id = db.Column(db.Integer)
-    metadata = db.Column(db.JSON)
+    extra_metadata = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
@@ -630,8 +630,8 @@ class FalsePositiveEvent(db.Model):
     corrected_by = db.Column(db.String(100))
     correction_timestamp = db.Column(db.DateTime)
     
-    # Metadata
-    metadata = db.Column(db.JSON)
+    # Additional metadata/context
+    extra_metadata = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
@@ -661,8 +661,8 @@ class DecoyInteraction(db.Model):
     last_action = db.Column(db.String(255))
     actions_taken = db.Column(db.JSON)
     
-    # Metadata
-    metadata = db.Column(db.JSON)
+    # Additional metadata/context
+    extra_metadata = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
@@ -690,8 +690,8 @@ class ThreatAttributionAccuracy(db.Model):
     # Confidence
     confidence_score = db.Column(db.Numeric(5, 4))
     
-    # Metadata
-    metadata = db.Column(db.JSON)
+    # Additional metadata/context
+    extra_metadata = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
@@ -726,8 +726,8 @@ class ModelVersion(db.Model):
     activated_at = db.Column(db.DateTime)
     deactivated_at = db.Column(db.DateTime)
     
-    # Metadata
-    metadata = db.Column(db.JSON)
+    # Additional metadata/context
+    extra_metadata = db.Column(db.JSON)
     created_at_timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     __table_args__ = (
@@ -772,8 +772,8 @@ class RetrainingJob(db.Model):
     error_message = db.Column(db.Text)
     error_traceback = db.Column(db.Text)
     
-    # Metadata
-    metadata = db.Column(db.JSON)
+    # Additional metadata/context
+    extra_metadata = db.Column(db.JSON)
 
 
 # Simple audit logging helper
@@ -2704,4 +2704,6 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     # Use Socket.IO server for real-time capabilities
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False)
+    # allow_unsafe_werkzeug=True is required with newer Werkzeug when running
+    # the development server in a non-debug container environment.
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)

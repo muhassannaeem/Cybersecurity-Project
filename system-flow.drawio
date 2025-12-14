@@ -1,0 +1,154 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="system-flow" name="System Flow">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- External / Users / Attackers -->
+        <mxCell id="internet" value="Internet / Attackers" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6e6;strokeColor=#cc0000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="users" value="Analysts / SOC Users" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="120" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Frontend Dashboard -->
+        <mxCell id="frontend" value="Frontend Dashboard (Next.js)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="240" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend API -->
+        <mxCell id="backend" value="Backend API&#10;(Flask + Socket.IO + Auth/RBAC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="700" y="240" width="240" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Database and Redis -->
+        <mxCell id="db" value="PostgreSQL DB" style="shape=process;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="720" y="360" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="redis" value="Redis Cache / Queues" style="shape=process;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="870" y="360" width="150" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Left-side capture / deception modules -->
+        <mxCell id="traffic" value="Traffic Monitor&#10;(Zeek + tcpdump)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="320" y="160" width="220" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="decoy" value="Decoy Generator&#10;(Honeypots: Dionaea, Conpot, Web, SSH, IoT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="320" y="320" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ML / Analysis modules -->
+        <mxCell id="behavioral" value="Behavioral Analysis&#10;(LSTM / Isolation Forest / Autoencoder)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#4fc3f7;" vertex="1" parent="1">
+          <mxGeometry x="700" y="80" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="adaptive" value="Adaptive Deception&#10;(ML-driven adaptive honeypots)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#4fc3f7;" vertex="1" parent="1">
+          <mxGeometry x="700" y="440" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="evaluation" value="Evaluation Engine (Metrics &amp; Retraining Triggers)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#4fc3f7;" vertex="1" parent="1">
+          <mxGeometry x="700" y="540" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Threat Attribution & TI -->
+        <mxCell id="attribution" value="Threat Attribution (MITRE ATT&amp;CK Mapping)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5e1fd;strokeColor=#b57edc;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="200" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ti" value="Threat Intelligence&#10;(STIX/TAXII, External Feeds)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5e1fd;strokeColor=#b57edc;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="300" width="230" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ELK Stack -->
+        <mxCell id="elk" value="ELK Stack (Elasticsearch, Logstash, Kibana, Filebeat)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="440" width="280" height="90" as="geometry"/>
+        </mxCell>
+
+
+        <!-- Edges -->
+        <!-- Internet -> Traffic Monitor & Decoys -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#cc0000;" edge="1" parent="1" source="internet" target="traffic">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#cc0000;" edge="1" parent="1" source="internet" target="decoy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Capture modules -> Backend / Behavioral Analysis -->
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="traffic" target="backend">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="traffic" target="behavioral">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="decoy" target="backend">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="decoy" target="behavioral">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Behavioral Analysis <-> Adaptive Deception -->
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="behavioral" target="adaptive">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;html=1;dashed=1;" edge="1" parent="1" source="adaptive" target="decoy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend <-> DB / Redis -->
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="backend" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="backend" target="redis">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend <-> Threat Attribution / TI -->
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="backend" target="attribution">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="backend" target="ti">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend <-> Evaluation Engine -->
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="backend" target="evaluation">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend <-> Frontend (HTTP + WebSockets) -->
+        <mxCell id="e14" value="HTTP + WebSockets" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#0000ff;" edge="1" parent="1" source="backend" target="frontend">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Users -> Frontend -->
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#0000ff;" edge="1" parent="1" source="users" target="frontend">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Logs to ELK -->
+        <mxCell id="e16" value="Logs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#d79b00;dashed=1;" edge="1" parent="1" source="backend" target="elk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e17" value="Logs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#d79b00;dashed=1;" edge="1" parent="1" source="traffic" target="elk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e18" value="Logs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#d79b00;dashed=1;" edge="1" parent="1" source="decoy" target="elk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Enriched events to SIEM (ELK) -->
+        <mxCell id="e19" value="Enriched Events (MITRE ATT&amp;CK)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;strokeColor=#008000;" edge="1" parent="1" source="attribution" target="elk">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

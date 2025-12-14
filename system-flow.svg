@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <style type="text/css"><![CDATA[
+      .box { fill: #ffffff; stroke: #333333; stroke-width: 2; }
+      .box-blue { fill: #dae8fc; stroke: #6c8ebf; }
+      .box-green { fill: #d5e8d4; stroke: #82b366; }
+      .box-yellow { fill: #fff2cc; stroke: #d6b656; }
+      .box-red { fill: #f8cecc; stroke: #b85450; }
+      .box-lightblue { fill: #e1f5fe; stroke: #4fc3f7; }
+      .box-purple { fill: #f5e1fd; stroke: #b57edc; }
+      .ellipse-red { fill: #ffe6e6; stroke: #cc0000; stroke-width: 2; }
+      .ellipse-purple { fill: #e1d5e7; stroke: #9673a6; stroke-width: 2; }
+      .label { font-family: Arial, sans-serif; font-size: 14px; fill: #000000; }
+      .label-small { font-family: Arial, sans-serif; font-size: 12px; fill: #000000; }
+      .arrow { stroke: #555555; stroke-width: 2; fill: none; }
+      .arrow-red { stroke: #cc0000; }
+      .arrow-blue { stroke: #0000ff; }
+      .arrow-green { stroke: #008000; }
+      .arrow-log { stroke: #d79b00; stroke-dasharray: 5 5; }
+    ]]></style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555555" />
+    </marker>
+    <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#cc0000" />
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0000ff" />
+    </marker>
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#008000" />
+    </marker>
+    <marker id="arrowhead-log" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#d79b00" />
+    </marker>
+  </defs>
+
+  <!-- Internet / Attackers -->
+  <ellipse class="ellipse-red" cx="120" cy="160" rx="80" ry="40" />
+  <text class="label" x="120" y="155" text-anchor="middle">Internet /</text>
+  <text class="label" x="120" y="173" text-anchor="middle">Attackers</text>
+
+  <!-- Traffic Monitor -->
+  <rect class="box box-red" x="320" y="120" width="240" height="70" rx="10" ry="10" />
+  <text class="label" x="440" y="145" text-anchor="middle">Traffic Monitor</text>
+  <text class="label-small" x="440" y="165" text-anchor="middle">Zeek + tcpdump</text>
+
+  <!-- Decoy Generator -->
+  <rect class="box box-red" x="320" y="230" width="280" height="80" rx="10" ry="10" />
+  <text class="label" x="460" y="255" text-anchor="middle">Decoy Generator</text>
+  <text class="label-small" x="460" y="275" text-anchor="middle">Honeypots: Dionaea, Conpot, Web, SSH, IoT</text>
+
+  <!-- Behavioral Analysis -->
+  <rect class="box box-lightblue" x="650" y="70" width="300" height="80" rx="10" ry="10" />
+  <text class="label" x="800" y="95" text-anchor="middle">Behavioral Analysis</text>
+  <text class="label-small" x="800" y="115" text-anchor="middle">LSTM / Isolation Forest / Autoencoder</text>
+
+  <!-- Backend API -->
+  <rect class="box box-green" x="650" y="200" width="300" height="100" rx="10" ry="10" />
+  <text class="label" x="800" y="225" text-anchor="middle">Backend API</text>
+  <text class="label-small" x="800" y="245" text-anchor="middle">Flask + Socket.IO + Auth / RBAC</text>
+  <text class="label-small" x="800" y="263" text-anchor="middle">Central REST API &amp; orchestration</text>
+
+  <!-- Adaptive Deception -->
+  <rect class="box box-lightblue" x="650" y="340" width="300" height="80" rx="10" ry="10" />
+  <text class="label" x="800" y="365" text-anchor="middle">Adaptive Deception</text>
+  <text class="label-small" x="800" y="385" text-anchor="middle">ML-driven adaptive honeypots</text>
+
+  <!-- Evaluation Engine -->
+  <rect class="box box-lightblue" x="650" y="450" width="300" height="80" rx="10" ry="10" />
+  <text class="label" x="800" y="475" text-anchor="middle">Evaluation Engine</text>
+  <text class="label-small" x="800" y="495" text-anchor="middle">Metrics &amp; automated retraining</text>
+
+  <!-- PostgreSQL DB -->
+  <rect class="box box-yellow" x="650" y="570" width="140" height="60" rx="8" ry="8" />
+  <text class="label" x="720" y="598" text-anchor="middle">PostgreSQL</text>
+  <text class="label-small" x="720" y="616" text-anchor="middle">Main database</text>
+
+  <!-- Redis -->
+  <rect class="box box-yellow" x="820" y="570" width="160" height="60" rx="8" ry="8" />
+  <text class="label" x="900" y="598" text-anchor="middle">Redis</text>
+  <text class="label-small" x="900" y="616" text-anchor="middle">Cache &amp; queues</text>
+
+  <!-- Threat Attribution -->
+  <rect class="box box-purple" x="1020" y="150" width="260" height="80" rx="10" ry="10" />
+  <text class="label" x="1150" y="175" text-anchor="middle">Threat Attribution</text>
+  <text class="label-small" x="1150" y="195" text-anchor="middle">MITRE ATT&amp;CK mapping</text>
+
+  <!-- Threat Intelligence -->
+  <rect class="box box-purple" x="1020" y="260" width="260" height="80" rx="10" ry="10" />
+  <text class="label" x="1150" y="285" text-anchor="middle">Threat Intelligence</text>
+  <text class="label-small" x="1150" y="305" text-anchor="middle">STIX / TAXII, external feeds</text>
+
+  <!-- ELK Stack -->
+  <rect class="box box-yellow" x="1020" y="390" width="260" height="100" rx="10" ry="10" />
+  <text class="label" x="1150" y="415" text-anchor="middle">ELK Stack</text>
+  <text class="label-small" x="1150" y="435" text-anchor="middle">Elasticsearch, Logstash, Kibana, Filebeat</text>
+
+  <!-- Frontend Dashboard -->
+  <rect class="box box-blue" x="1320" y="220" width="230" height="80" rx="10" ry="10" />
+  <text class="label" x="1435" y="245" text-anchor="middle">Frontend Dashboard</text>
+  <text class="label-small" x="1435" y="265" text-anchor="middle">Next.js real-time UI</text>
+
+  <!-- Analysts / SOC Users -->
+  <ellipse class="ellipse-purple" cx="1440" cy="110" rx="90" ry="35" />
+  <text class="label" x="1440" y="105" text-anchor="middle">Analysts /</text>
+  <text class="label" x="1440" y="123" text-anchor="middle">SOC Users</text>
+
+  <!-- Arrows: Internet -> Traffic & Decoy -->
+  <line class="arrow arrow-red" x1="200" y1="160" x2="320" y2="155" marker-end="url(#arrowhead-red)" />
+  <line class="arrow arrow-red" x1="200" y1="170" x2="320" y2="260" marker-end="url(#arrowhead-red)" />
+
+  <!-- Capture modules -> Backend & Behavioral -->
+  <line class="arrow" x1="560" y1="155" x2="650" y2="215" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="560" y1="265" x2="650" y2="230" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="560" y1="155" x2="650" y2="110" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="600" y1="270" x2="650" y2="110" marker-end="url(#arrowhead)" />
+
+  <!-- Behavioral <-> Adaptive / Decoy -->
+  <line class="arrow" x1="800" y1="150" x2="800" y2="340" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="800" y1="420" x2="800" y2="450" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="800" y1="420" x2="600" y2="310" marker-end="url(#arrowhead)" />
+
+  <!-- Backend -> DB & Redis -->
+  <line class="arrow" x1="780" y1="300" x2="720" y2="570" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="820" y1="300" x2="900" y2="570" marker-end="url(#arrowhead)" />
+
+  <!-- Backend <-> Threat Attribution / TI / Evaluation -->
+  <line class="arrow" x1="950" y1="240" x2="1020" y2="190" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="950" y1="260" x2="1020" y2="300" marker-end="url(#arrowhead)" />
+  <line class="arrow" x1="800" y1="300" x2="800" y2="450" marker-end="url(#arrowhead)" />
+
+  <!-- Backend <-> Frontend (HTTP + WebSockets) -->
+  <line class="arrow arrow-blue" x1="950" y1="250" x2="1320" y2="260" marker-end="url(#arrowhead-blue)" />
+  <text class="label-small" x="1140" y="245" text-anchor="middle">HTTP + WebSockets</text>
+
+  <!-- Users -> Frontend -->
+  <line class="arrow arrow-blue" x1="1440" y1="145" x2="1440" y2="220" marker-end="url(#arrowhead-blue)" />
+
+  <!-- Logs to ELK -->
+  <line class="arrow arrow-log" x1="880" y1="300" x2="1020" y2="420" marker-end="url(#arrowhead-log)" />
+  <line class="arrow arrow-log" x1="560" y1="155" x2="1020" y2="400" marker-end="url(#arrowhead-log)" />
+  <line class="arrow arrow-log" x1="600" y1="270" x2="1020" y2="420" marker-end="url(#arrowhead-log)" />
+
+  <!-- Enriched events to ELK -->
+  <line class="arrow arrow-green" x1="1150" y1="230" x2="1150" y2="390" marker-end="url(#arrowhead-green)" />
+  <text class="label-small" x="1170" y="360" text-anchor="start">Enriched events (MITRE ATT&amp;CK)</text>
+
+</svg>

@@ -68,7 +68,7 @@ class MetricsService:
                 overall_score=metric_data.get('overall_score'),
                 detected=metric_data.get('detected', False),
                 target_host=metric_data.get('target_host'),
-                metadata=metric_data.get('metadata')
+                extra_metadata=metric_data.get('metadata')
             )
             
             self.db.add(metric)
@@ -129,7 +129,7 @@ class MetricsService:
                 confidence_score=event_data.get('confidence_score'),
                 threat_id=event_data.get('threat_id'),
                 alert_id=event_data.get('alert_id'),
-                metadata=event_data.get('metadata')
+                extra_metadata=event_data.get('metadata')
             )
             
             self.db.add(event)
@@ -169,7 +169,7 @@ class MetricsService:
                 detected_by=event_data.get('detected_by'),
                 corrected_by=event_data.get('corrected_by'),
                 correction_timestamp=event_data.get('correction_timestamp'),
-                metadata=event_data.get('metadata')
+                extra_metadata=event_data.get('metadata')
             )
             
             self.db.add(event)
@@ -224,7 +224,7 @@ class MetricsService:
                 first_action=interaction_data.get('first_action'),
                 last_action=interaction_data.get('last_action'),
                 actions_taken=interaction_data.get('actions_taken'),
-                metadata=interaction_data.get('metadata')
+                extra_metadata=interaction_data.get('metadata')
             )
             
             self.db.add(interaction)
@@ -270,7 +270,7 @@ class MetricsService:
                 technique_total=technique_total,
                 accuracy_score=accuracy_score,
                 confidence_score=accuracy_data.get('confidence_score'),
-                metadata=accuracy_data.get('metadata')
+                extra_metadata=accuracy_data.get('metadata')
             )
             
             self.db.add(accuracy)

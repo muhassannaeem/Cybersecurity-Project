@@ -53,6 +53,11 @@ spec:
             configMapKeyRef:
               name: cybersecurity-config
               key: FLASK_ENV
+        - name: RATELIMIT_STORAGE_URI
+          valueFrom:
+            configMapKeyRef:
+              name: cybersecurity-config
+              key: RATELIMIT_STORAGE_URI
         volumeMounts:
         - name: models-storage
           mountPath: /app/models
